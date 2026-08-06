@@ -1,0 +1,69 @@
+# .NET build output and generated binaries
+**/[Bb]in/
+**/[Oo]bj/
+*.deps.json
+*.dll
+*.exe
+*.pdb
+*.runtimeconfig.json
+
+# Release, package, and publish output
+/artifacts/
+/dist/
+/outputs/
+/package/
+*.deb
+*.nupkg
+*.snupkg
+*.tar
+*.tar.gz
+*.zip
+
+# Test results and coverage reports
+/TestResults/
+/coverage/
+*.coverage
+*.coveragexml
+*.trx
+coverage.*
+
+# IDE and editor state
+/.codegraph/
+/.idea/
+/.vs/
+/.vscode/
+*.sln.docstates
+*.suo
+*.user
+*.userosscache
+
+# Local NuGet state
+/.nuget/
+/packages/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+*.local.json
+
+# Logs, process state, and crash dumps
+*.dmp
+*.log
+*.pid
+*.sock
+core
+core.*
+usage-history.*
+
+# Operating-system metadata and temporary files
+.DS_Store
+Desktop.ini
+Thumbs.db
+*~
+
+# Local planning documents
+/docs/plans/
+
+# Private cross-session context
+/private/

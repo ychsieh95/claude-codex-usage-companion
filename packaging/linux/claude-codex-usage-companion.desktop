@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Claude Codex Usage Companion
+GenericName=Claude and Codex usage monitor
+Comment=View Claude and Codex rate-limit usage
+Exec=/usr/bin/env -u SESSION_MANAGER AVALONIA_X11_USE_SESSION_MANAGEMENT=0 claude-codex-usage-companion gui
+Icon=claude-codex-usage-companion
+Terminal=false
+Categories=Development;
+Keywords=Claude;Anthropic;Codex;OpenAI;usage;rate limit;
+StartupNotify=true
+StartupWMClass=CodexUsageCompanion
