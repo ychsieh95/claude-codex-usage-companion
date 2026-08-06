@@ -1,0 +1,23 @@
+{
+  "name": "claude-codex-usage-companion",
+  "version": "0.1.0",
+  "description": "Displays Claude and Codex rate-limit usage in a Linux desktop companion and terminal CLI.",
+  "author": {
+    "name": "ychsieh95",
+    "url": "https://github.com/ychsieh95/claude-codex-usage-companion"
+  },
+  "interface": {
+    "displayName": "Claude Codex Usage Companion",
+    "shortDescription": "Claude and Codex usage for the Linux desktop and terminal.",
+    "longDescription": "Shows the current session/week Claude limits and the five-hour and weekly Codex limits in a compact Linux desktop companion and provides scriptable status and watch commands.",
+    "developerName": "ychsieh95",
+    "category": "Productivity",
+    "capabilities": [
+      "Read"
+    ],
+    "brandColor": "#D97757",
+    "defaultPrompt": [
+      "Show my current Claude and Codex usage."
+    ]
+  }
+}
