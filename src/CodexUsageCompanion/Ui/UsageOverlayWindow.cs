@@ -245,16 +245,29 @@ public sealed class UsageOverlayWindow : Window
 
     public void RestoreAndActivate()
     {
-        if (!IsVisible && !_showTaskbarIcon)
+        var wasHidden = !IsVisible;
+        var restoreTopmost = wasHidden && Topmost;
+        // Some X11 window managers discard _NET_WM_STATE_ABOVE and
+        // _NET_WM_STATE_SKIP_TASKBAR when a window is unmapped. Change the
+        // managed values before remapping so restoring them after Show()
+        // sends both states to the native window again.
+        if (restoreTopmost)
         {
-            // Some X11 window managers discard _NET_WM_STATE_SKIP_TASKBAR when
-            // a window is unmapped. Change the managed value before remapping
-            // so setting it back afterwards reaches the native window again.
+            Topmost = false;
+        }
+
+        if (wasHidden && !_showTaskbarIcon)
+        {
             ShowInTaskbar = true;
         }
 
         Show();
         ShowInTaskbar = _showTaskbarIcon;
+        if (restoreTopmost)
+        {
+            Topmost = true;
+        }
+
         WindowState = WindowState.Normal;
         Activate();
     }
