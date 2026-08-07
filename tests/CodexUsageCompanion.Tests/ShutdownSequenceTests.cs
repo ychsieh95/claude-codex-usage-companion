@@ -6,6 +6,15 @@ namespace CodexUsageCompanion.Tests;
 public sealed class ShutdownSequenceTests
 {
     [Fact]
+    public void DefaultBackgroundDrainTimeoutIsBounded()
+    {
+        Assert.InRange(
+            ShutdownSequence.DefaultBackgroundDrainTimeout,
+            TimeSpan.FromMilliseconds(1),
+            TimeSpan.FromSeconds(2));
+    }
+
+    [Fact]
     public async Task UiCleanupRunsBeforeWaitingForBackgroundWork()
     {
         var backgroundCompletion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);

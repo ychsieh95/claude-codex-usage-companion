@@ -17,7 +17,6 @@ namespace CodexUsageCompanion;
 
 public sealed class App : Application
 {
-    private static readonly TimeSpan OsShutdownDrainTimeout = TimeSpan.FromSeconds(2);
     private IClassicDesktopStyleApplicationLifetime? _desktop;
     private CompanionRuntime? _runtime;
     private UsageOverlayWindow? _window;
@@ -64,19 +63,6 @@ public sealed class App : Application
 
             desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
-            var startHidden = _settings.StartOnBoot &&
-                _settings.MinimizeOnStart &&
-                GuiLaunchContext.LaunchedInBackground;
-            if (startHidden)
-            {
-                _runtime.Start();
-            }
-            else
-            {
-                desktop.MainWindow = _window;
-            }
-
-            _window.Opened += (_, _) => _runtime.Start();
             _window.SettingsRequested += async (_, _) => await ShowSettingsAsync();
             _window.AlwaysOnTopRequested += HandleAlwaysOnTopRequested;
             _window.Closing += async (_, eventArgs) =>
@@ -88,7 +74,7 @@ public sealed class App : Application
 
                 if (eventArgs.CloseReason == WindowCloseReason.OSShutdown)
                 {
-                    await ShutdownAsync(OsShutdownDrainTimeout);
+                    await ShutdownAsync();
                     return;
                 }
 
@@ -101,6 +87,17 @@ public sealed class App : Application
 
                 await ShutdownAsync();
             };
+
+            // Start independently of the window's Opened event so the first
+            // refresh cannot be missed during framework initialization.
+            _runtime.Start();
+            var startHidden = _settings.StartOnBoot &&
+                _settings.MinimizeOnStart &&
+                GuiLaunchContext.LaunchedInBackground;
+            if (!startHidden)
+            {
+                desktop.MainWindow = _window;
+            }
 
             if (_settings.StartOnBoot)
             {
@@ -576,7 +573,7 @@ public sealed class App : Application
         }
     }
 
-    private async Task ShutdownAsync(TimeSpan? backgroundDrainTimeout = null)
+    private async Task ShutdownAsync()
     {
         if (_shutdownTask is not null)
         {
@@ -590,13 +587,11 @@ public sealed class App : Application
         }
 
         _shutdownRequested = true;
-        _shutdownTask = ShutdownCoreAsync(_desktop, backgroundDrainTimeout);
+        _shutdownTask = ShutdownCoreAsync(_desktop);
         await _shutdownTask;
     }
 
-    private async Task ShutdownCoreAsync(
-        IClassicDesktopStyleApplicationLifetime desktop,
-        TimeSpan? backgroundDrainTimeout)
+    private async Task ShutdownCoreAsync(IClassicDesktopStyleApplicationLifetime desktop)
     {
         try
         {
@@ -626,8 +621,7 @@ public sealed class App : Application
                         HandleDispatcherUnhandledException;
                     desktop.Shutdown();
                     return ValueTask.CompletedTask;
-                },
-                backgroundDrainTimeout);
+                });
         }
         catch (Exception exception)
         {

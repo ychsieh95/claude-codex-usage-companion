@@ -340,6 +340,7 @@ public sealed class CompanionRuntime : IAsyncDisposable
                     _window.UpdateUsage(UsageProvider.Claude, null);
                 }
 
+                _window.SetStatus(null, error);
                 UsageUpdateFailed?.Invoke(UsageProvider.Claude, error, failedAt);
             });
         }

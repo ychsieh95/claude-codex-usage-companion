@@ -2,6 +2,9 @@ namespace CodexUsageCompanion.Lifecycle;
 
 public static class ShutdownSequence
 {
+    public static readonly TimeSpan DefaultBackgroundDrainTimeout =
+        TimeSpan.FromSeconds(2);
+
     public static async Task RunAsync(
         Action uiCleanup,
         Func<Task> drainBackground,
@@ -20,15 +23,8 @@ public static class ShutdownSequence
 
         try
         {
-            var backgroundDrain = drainBackground();
-            if (backgroundDrainTimeout is null)
-            {
-                await backgroundDrain;
-            }
-            else
-            {
-                await backgroundDrain.WaitAsync(backgroundDrainTimeout.Value);
-            }
+            var drainTimeout = backgroundDrainTimeout ?? DefaultBackgroundDrainTimeout;
+            await drainBackground().WaitAsync(drainTimeout);
         }
         catch (Exception exception)
         {
