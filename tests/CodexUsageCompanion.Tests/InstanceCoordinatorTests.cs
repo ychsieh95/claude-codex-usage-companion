@@ -37,6 +37,28 @@ public sealed class InstanceCoordinatorTests
     }
 
     [Fact]
+    public async Task StalledClientDoesNotBlockOtherSignals()
+    {
+        var path = SocketPath();
+        var owner = new InstanceCoordinator(path);
+        var sender = new InstanceCoordinator(path);
+        using var lease = owner.TryAcquireResident();
+        var received = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        Assert.NotNull(lease);
+        lease.MessageReceived += message => received.TrySetResult(message);
+        lease.Start();
+        using var stalledClient = new System.Net.Sockets.Socket(
+            System.Net.Sockets.AddressFamily.Unix,
+            System.Net.Sockets.SocketType.Stream,
+            System.Net.Sockets.ProtocolType.Unspecified);
+        await stalledClient.ConnectAsync(new System.Net.Sockets.UnixDomainSocketEndPoint(path));
+
+        Assert.True(sender.SignalRefresh());
+        Assert.Equal("refresh", await received.Task.WaitAsync(TimeSpan.FromSeconds(2)));
+    }
+
+    [Fact]
     public void SignalRefreshReturnsFalseWithoutResidentOwner()
     {
         var sender = new InstanceCoordinator(SocketPath());

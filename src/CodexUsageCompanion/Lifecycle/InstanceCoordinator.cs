@@ -10,61 +10,53 @@ public sealed class InstanceCoordinator
     public const string DefaultName = "claude-codex-usage-companion";
 
     private readonly string _socketPath;
+    private readonly string _lockPath;
 
     public InstanceCoordinator(string? endpoint = null)
     {
         _socketPath = endpoint ?? LinuxPaths.InstanceSocketPath;
+        _lockPath = $"{_socketPath}.lock";
     }
 
     public ResidentLease? TryAcquireResident()
     {
         Directory.CreateDirectory(Path.GetDirectoryName(_socketPath)!);
-        var socket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
+        var ownershipLock = TryAcquireOwnershipLock();
+        if (ownershipLock is null)
+        {
+            return null;
+        }
+
+        Socket? socket = null;
         try
         {
-            socket.Bind(new UnixDomainSocketEndPoint(_socketPath));
-            socket.Listen(8);
-            TryRestrictSocketPermissions();
-            return new ResidentLease(socket, _socketPath);
-        }
-        catch (SocketException) when (File.Exists(_socketPath))
-        {
-            socket.Dispose();
-            if (Signal("ping"))
+            // The lock, rather than the socket pathname, is the authoritative
+            // ownership token. A crashed process can leave a socket pathname
+            // behind, while an unlinked live socket can no longer prevent a
+            // second process from binding the same name.
+            if (File.Exists(_socketPath))
             {
-                return null;
-            }
+                // Preserve compatibility with an older resident that predates
+                // the lock file but still has a functioning listener.
+                if (Signal("ping"))
+                {
+                    ownershipLock.Dispose();
+                    return null;
+                }
 
-            try
-            {
                 File.Delete(_socketPath);
-            }
-            catch (IOException)
-            {
-                return null;
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return null;
             }
 
             socket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
-            try
-            {
-                socket.Bind(new UnixDomainSocketEndPoint(_socketPath));
-                socket.Listen(8);
-                TryRestrictSocketPermissions();
-                return new ResidentLease(socket, _socketPath);
-            }
-            catch
-            {
-                socket.Dispose();
-                return null;
-            }
+            socket.Bind(new UnixDomainSocketEndPoint(_socketPath));
+            socket.Listen(8);
+            TryRestrictSocketPermissions();
+            return new ResidentLease(socket, ownershipLock);
         }
         catch
         {
-            socket.Dispose();
+            socket?.Dispose();
+            ownershipLock.Dispose();
             return null;
         }
     }
@@ -121,20 +113,49 @@ public sealed class InstanceCoordinator
             CompanionLog.Shared.Write("instance-permissions", exception);
         }
     }
+
+    private FileStream? TryAcquireOwnershipLock()
+    {
+        FileStream? stream = null;
+        try
+        {
+            stream = new FileStream(
+                _lockPath,
+                FileMode.OpenOrCreate,
+                FileAccess.ReadWrite,
+                FileShare.ReadWrite | FileShare.Delete);
+            if (OperatingSystem.IsMacOS())
+            {
+                stream.Dispose();
+                return null;
+            }
+
+            stream.Lock(0, 1);
+            return stream;
+        }
+        catch (Exception exception) when (
+            exception is IOException or
+            UnauthorizedAccessException or
+            PlatformNotSupportedException)
+        {
+            stream?.Dispose();
+            return null;
+        }
+    }
 }
 
 public sealed class ResidentLease : IDisposable
 {
     private readonly Socket _listener;
-    private readonly string _socketPath;
+    private readonly FileStream _ownershipLock;
     private readonly CancellationTokenSource _cancellation = new();
     private Task? _acceptTask;
     private bool _disposed;
 
-    internal ResidentLease(Socket listener, string socketPath)
+    internal ResidentLease(Socket listener, FileStream ownershipLock)
     {
         _listener = listener;
-        _socketPath = socketPath;
+        _ownershipLock = ownershipLock;
     }
 
     public event Action<string>? MessageReceived;
@@ -169,16 +190,7 @@ public sealed class ResidentLease : IDisposable
         }
 
         _cancellation.Dispose();
-        try
-        {
-            File.Delete(_socketPath);
-        }
-        catch (IOException)
-        {
-        }
-        catch (UnauthorizedAccessException)
-        {
-        }
+        _ownershipLock.Dispose();
     }
 
     private async Task AcceptLoopAsync(CancellationToken cancellationToken)
@@ -199,13 +211,25 @@ public sealed class ResidentLease : IDisposable
                 break;
             }
 
-            using (connection)
+            _ = HandleConnectionAsync(connection, cancellationToken);
+        }
+    }
+
+    private async Task HandleConnectionAsync(
+        Socket connection,
+        CancellationToken cancellationToken)
+    {
+        using (connection)
+        using (var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
+        {
+            timeout.CancelAfter(TimeSpan.FromSeconds(1));
+            try
             {
                 var buffer = new byte[64];
-                var read = await connection.ReceiveAsync(buffer, SocketFlags.None, cancellationToken);
+                var read = await connection.ReceiveAsync(buffer, SocketFlags.None, timeout.Token);
                 if (read == 0)
                 {
-                    continue;
+                    return;
                 }
 
                 var message = Encoding.UTF8.GetString(buffer, 0, read).Trim();
@@ -213,6 +237,12 @@ public sealed class ResidentLease : IDisposable
                 {
                     MessageReceived?.Invoke(message);
                 }
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (SocketException)
+            {
             }
         }
     }

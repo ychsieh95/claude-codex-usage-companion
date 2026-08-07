@@ -35,6 +35,8 @@ public sealed class App : Application
     private DateTimeOffset? _lastCodexUpdatedAt;
     private RateLimitState? _lastClaudeUsage;
     private DateTimeOffset? _lastClaudeUpdatedAt;
+    private string? _renderedTrayIconStyle;
+    private int? _renderedTrayRemainingPercent;
     private bool _shutdownRequested;
     private Task? _shutdownTask;
 
@@ -137,7 +139,7 @@ public sealed class App : Application
         {
             _trayIcon.ToolTipText = tooltipText;
             _trayIcon.Menu = menu;
-            _trayIcon.Icon = CreateTrayWindowIcon();
+            UpdateTrayIconImage();
             _trayIcon.IsVisible = true;
             StartTrayTooltipBridge();
             _trayTooltipBridge.Invalidate();
@@ -146,11 +148,12 @@ public sealed class App : Application
 
         _trayIcon = new TrayIcon
         {
-            Icon = CreateTrayWindowIcon(),
             ToolTipText = tooltipText,
             Menu = menu,
-            IsVisible = true
+            IsVisible = false
         };
+        UpdateTrayIconImage();
+        _trayIcon.IsVisible = true;
         _trayIcon.Clicked += (_, _) => ShowWindow();
         TrayIcon.SetIcons(this, new TrayIcons { _trayIcon });
         StartTrayTooltipBridge();
@@ -257,6 +260,30 @@ public sealed class App : Application
         return new WindowIcon(generatedIcon);
     }
 
+    private void UpdateTrayIconImage()
+    {
+        if (_trayIcon is null)
+        {
+            return;
+        }
+
+        var style = TrayIconStyleOptions.Normalize(_settings.TrayIconStyle);
+        var remainingPercent = TrayIconRenderer.ResolveRemainingPercent(
+            style,
+            _lastClaudeUsage,
+            _lastCodexUsage);
+        if (style == _renderedTrayIconStyle &&
+            (style == TrayIconStyleOptions.Original ||
+             remainingPercent == _renderedTrayRemainingPercent))
+        {
+            return;
+        }
+
+        _trayIcon.Icon = CreateTrayWindowIcon();
+        _renderedTrayIconStyle = style;
+        _renderedTrayRemainingPercent = remainingPercent;
+    }
+
     private void DisposeTrayIcon()
     {
         _trayTooltipBridgeTimer?.Stop();
@@ -268,6 +295,8 @@ public sealed class App : Application
 
         _trayIcon.IsVisible = false;
         _trayIcon = null;
+        _renderedTrayIconStyle = null;
+        _renderedTrayRemainingPercent = null;
         TrayIcon.SetIcons(this, new TrayIcons());
     }
 
@@ -471,7 +500,7 @@ public sealed class App : Application
             var tooltipText = FormatTrayTooltip();
             _trayTooltipBridge.UpdateText(tooltipText);
             _trayIcon.ToolTipText = tooltipText;
-            _trayIcon.Icon = CreateTrayWindowIcon();
+            UpdateTrayIconImage();
             _trayTooltipBridge.Invalidate();
         }
 
