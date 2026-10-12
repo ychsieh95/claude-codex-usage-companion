@@ -100,7 +100,7 @@ public sealed class App : Application
                 GuiLaunchContext.LaunchedInBackground;
             if (!startHidden)
             {
-                desktop.MainWindow = _window;
+                _ = ShowAfterInitialRefreshAsync();
             }
 
             if (_settings.StartOnBoot)
@@ -123,6 +123,36 @@ public sealed class App : Application
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private async Task ShowAfterInitialRefreshAsync(bool activate = false)
+    {
+        try
+        {
+            await _runtime!.InitialRefresh;
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                if (_shutdownRequested || _window is null)
+                    return;
+                _window.PrepareForFirstShow();
+                _desktop!.MainWindow = _window;
+                if (activate)
+                    _window.RestoreAndActivate();
+                else
+                    _window.Show();
+            }, DispatcherPriority.Loaded);
+        }
+        catch (Exception exception)
+        {
+            CompanionLog.Shared.Write("initial-display", exception);
+            if (!_shutdownRequested && _window is not null)
+            {
+                _window.SetStatus(null, $"Unable to initialize usage: {exception.Message}");
+                _window.PrepareForFirstShow();
+                _desktop!.MainWindow = _window;
+                _window.Show();
+            }
+        }
     }
 
     private void UpdateTrayIcon()
@@ -365,7 +395,10 @@ public sealed class App : Application
             return;
         }
 
-        _window.RestoreAndActivate();
+        if (_runtime is not null && !_runtime.InitialRefresh.IsCompleted)
+            _ = ShowAfterInitialRefreshAsync(activate: true);
+        else
+            _window.RestoreAndActivate();
     }
 
     private void ShowShortcuts()

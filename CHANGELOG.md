@@ -30,6 +30,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- Wait for the initial enabled-provider refresh (including errors) before displaying the overlay, so live-data column sizing is completed while hidden.
+- Prepare theme templates, layout, card sizes, and placement before the overlay first appears, avoiding visible initialization changes.
+- Refit the overlay after settings layout updates so enabling the Codex 5-hour limit keeps weekly credits and the status line visible without scrolling.
 - Center Yes/No button labels horizontally and vertically in the Reset to defaults confirmation.
 - Measure the header and scrolling content directly before the ScrollViewer template is ready, so the initial window fits all visible cards instead of opening at the minimum height. The first display includes every visible card and the status line, with only the normal bottom inset.
 - Progress tracks and fills now resize with their cards for saved sizes, dragging, keyboard resizing, and font changes.

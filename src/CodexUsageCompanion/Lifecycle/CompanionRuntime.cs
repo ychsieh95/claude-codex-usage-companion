@@ -44,6 +44,7 @@ public sealed class CompanionRuntime : IAsyncDisposable
 
     public event Action<UsageProvider, RateLimitState, DateTimeOffset>? UsageUpdated;
     public event Action<UsageProvider, string, DateTimeOffset>? UsageUpdateFailed;
+    public Task InitialRefresh { get; private set; } = Task.CompletedTask;
 
     public void Start()
     {
@@ -64,7 +65,9 @@ public sealed class CompanionRuntime : IAsyncDisposable
         _lease.Start();
         _periodicTimer = new PeriodicTimer(_refreshInterval);
         _periodicTask = RunPeriodicRefreshAsync(_periodicTimer, _cancellation.Token);
-        RequestRefresh();
+        InitialRefresh = Task.WhenAll(
+            RefreshCodexAsync(_cancellation.Token),
+            RefreshClaudeAsync(_cancellation.Token));
     }
 
     public void UpdateRefreshInterval(int seconds)
@@ -249,7 +252,7 @@ public sealed class CompanionRuntime : IAsyncDisposable
 
             if (message == "activate")
             {
-                _window.RestoreAndActivate();
+                _ = ActivateAfterInitialRefreshAsync();
             }
 
             if (UsageRefreshPolicy.ShouldRefreshForInstanceMessage(message))
@@ -257,6 +260,23 @@ public sealed class CompanionRuntime : IAsyncDisposable
                 RequestRefresh();
             }
         });
+    }
+
+    private async Task ActivateAfterInitialRefreshAsync()
+    {
+        try
+        {
+            await InitialRefresh;
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                if (Volatile.Read(ref _stopping) == 0)
+                    _window.RestoreAndActivate();
+            });
+        }
+        catch (Exception exception)
+        {
+            CompanionLog.Shared.Write("initial-activation", exception);
+        }
     }
 
     private void RequestRefresh()

@@ -25,6 +25,72 @@ public sealed class OverlayMergeTests
     private static readonly HeadlessUnitTestSession Session =
         HeadlessUnitTestSession.StartNew(typeof(OverlayTestApplication));
     [Fact]
+    public Task FirstOpenedFrameAlreadyHasConfiguredSizeAndLayout() => Session.Dispatch(() =>
+    {
+        var theme = new Avalonia.Themes.Fluent.FluentTheme();
+        Application.Current!.Styles.Add(theme);
+        try
+        {
+            foreach (var language in Enum.GetValues<UiLanguage>())
+            {
+                var window = new UsageOverlayWindow(new CompanionSettings
+                {
+                    ShowCodexFiveHour = true,
+                    FontScale = 1.5,
+                    LabelPercentageSpacing = 180,
+                    PercentageTimeSpacing = 32
+                }, UiText.For(language));
+                window.PrepareForFirstShow();
+                var size = new Size(window.Width, window.Height);
+                var opened = false;
+                window.Opened += (_, _) =>
+                {
+                    opened = true;
+                    Assert.Equal(size, new Size(window.Width, window.Height));
+                    Assert.Contains(window.GetVisualDescendants().OfType<TextBlock>(),
+                        text => text.Text == "Claude" && text.Bounds.Height > 0);
+                };
+                window.Show();
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                Assert.True(opened);
+                Assert.Equal(size, new Size(window.Width, window.Height));
+                window.Close();
+            }
+        }
+        finally
+        {
+            Application.Current.Styles.Remove(theme);
+        }
+    }, CancellationToken.None);
+
+    [Fact]
+    public Task EnablingCodexFiveHourFitsCreditsAndStatusWithoutScrolling() => Session.Dispatch(() =>
+    {
+        var settings = new CompanionSettings { EnableClaudeUsage = false };
+        var window = new UsageOverlayWindow(settings);
+        window.UpdateUsage(UsageProvider.Codex, new RateLimitState(
+            new(3, 300, 1791775260), new(85, 10080, 1792371660), null)
+        {
+            CreditBalance = "12.50"
+        });
+        window.SetStatus(DateTimeOffset.UtcNow, null, UsageProvider.Codex);
+        window.Show();
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        var initialHeight = window.Height;
+        window.ApplySettings(settings with { ShowCodexFiveHour = true }, UiText.For(UiLanguage.English));
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        Assert.True(window.Height >= initialHeight + OverlayLayoutOptions.FiveHourCardHeight);
+        var status = window.GetVisualDescendants().OfType<TextBlock>()
+            .Single(text => text.Text?.StartsWith("Last updated at") == true);
+        var bottom = status.TranslatePoint(new Point(0, status.Bounds.Height), window)!.Value.Y;
+        Assert.InRange(window.Height - bottom, 12.5, 14.5);
+        window.ApplySettings(settings, UiText.For(UiLanguage.English));
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        Assert.Equal(initialHeight, window.Height);
+        window.Close();
+    }, CancellationToken.None);
+
+    [Fact]
     public Task CreditDetailsAreVisibleBelowWeeklyProgressBar() => Session.Dispatch(() =>
     {
         var window = new UsageOverlayWindow();

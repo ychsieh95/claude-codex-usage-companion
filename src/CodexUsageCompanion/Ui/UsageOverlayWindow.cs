@@ -9,6 +9,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using CodexUsageCompanion.Configuration;
 using CodexUsageCompanion.Lifecycle;
 using CodexUsageCompanion.Localization;
@@ -212,9 +213,34 @@ public sealed class UsageOverlayWindow : Window
         {
             if (GetTrayRestorePosition() is { } savedPosition) Position = savedPosition;
             else PositionOnPrimaryScreen();
-            ApplyThemePalette();
         };
         AddHandler(KeyDownEvent, HandleKeyDown, RoutingStrategies.Tunnel);
+        PrepareForFirstShow();
+    }
+
+    public void PrepareForFirstShow()
+    {
+        if (IsVisible)
+            return;
+
+        // Materialize theme templates and measure their final content before
+        // the native window is mapped, rather than configuring it in Opened.
+        ApplyTemplates(this);
+        ApplyThemePalette();
+        ApplyCardHeights();
+        ApplyComputedHeight();
+        Measure(new Size(Width, Height));
+        Arrange(new Rect(0, 0, Width, Height));
+        UpdateLayout();
+        PositionOnPrimaryScreen();
+    }
+
+    private static void ApplyTemplates(Visual visual)
+    {
+        if (visual is TemplatedControl control)
+            control.ApplyTemplate();
+        foreach (var child in visual.GetVisualChildren().ToArray())
+            ApplyTemplates(child);
     }
 
     public event EventHandler? RefreshRequested;
@@ -347,6 +373,9 @@ public sealed class UsageOverlayWindow : Window
         UpdateUsage(UsageProvider.Codex, _lastCodexState);
         UpdateUsage(UsageProvider.Claude, _lastClaudeState);
         RenderStatus();
+        // Visibility and localized text invalidate nested layouts asynchronously.
+        // Fit again after those invalidations reach the content stack.
+        Dispatcher.UIThread.Post(ApplyComputedHeight, DispatcherPriority.Loaded);
     }
 
     public void ApplyAppearance(string backgroundColor, int percentageTimeSpacing, int labelPercentageSpacing)
@@ -372,6 +401,8 @@ public sealed class UsageOverlayWindow : Window
 
     public void RestoreAndActivate()
     {
+        if (!IsVisible && _positionBeforeTrayHide is null)
+            PrepareForFirstShow();
         var wasHidden = !IsVisible;
         var restorePosition = wasHidden ? GetTrayRestorePosition() : null;
         var restoreTopmost = wasHidden && Topmost;
