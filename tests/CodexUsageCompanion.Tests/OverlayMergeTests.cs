@@ -24,6 +24,116 @@ public sealed class OverlayMergeTests
 {
     private static readonly HeadlessUnitTestSession Session =
         HeadlessUnitTestSession.StartNew(typeof(OverlayTestApplication));
+
+    [Fact]
+    public Task HeaderWhitespaceStartsCustomPositionTracking() => Session.Dispatch(() =>
+    {
+        var window = new UsageOverlayWindow();
+        try
+        {
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            PixelPoint? savedPosition = null;
+            window.CustomPositionChanged += position => savedPosition = position;
+            var title = window.GetVisualDescendants().OfType<TextBlock>()
+                .Single(text => text.Text == UiText.For(UiLanguage.English).CombinedUsageHeaderTitle);
+            var header = title.GetVisualAncestors().OfType<Grid>().First();
+            // The empty strip above the vertically centered title must also drag.
+            var point = header.TranslatePoint(new Point(8, 1), window)!.Value;
+            var originalPosition = window.Position;
+            window.MouseDown(point, MouseButton.Left);
+            window.Width += 30;
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            Assert.Equal(originalPosition, window.Position);
+            // Headless input cannot drive the compositor; simulate its move event.
+            var movedPosition = new PixelPoint(originalPosition.X - 110, originalPosition.Y - 70);
+            window.Position = movedPosition;
+            window.MouseUp(point, MouseButton.Left);
+            window.Width += 30;
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            window.UpdateUsage(UsageProvider.Codex, null);
+            window.HideToTray();
+
+            Assert.Equal(movedPosition, savedPosition);
+            window.RestoreAndActivate();
+            Assert.Equal(movedPosition, window.Position);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }, CancellationToken.None);
+
+    [Fact]
+    public Task HeaderSettingsButtonDoesNotStartWindowDrag() => Session.Dispatch(() =>
+    {
+        var theme = new Avalonia.Themes.Fluent.FluentTheme();
+        Application.Current!.Styles.Add(theme);
+        var window = new UsageOverlayWindow();
+        try
+        {
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            var settingsRequested = false;
+            PixelPoint? savedPosition = null;
+            window.SettingsRequested += (_, _) => settingsRequested = true;
+            window.CustomPositionChanged += position => savedPosition = position;
+            var button = window.GetVisualDescendants().OfType<Button>()
+                .Single(control => control.Content as string == "⚙");
+            var point = button.TranslatePoint(new Point(button.Bounds.Width / 2, button.Bounds.Height / 2), window)!.Value;
+            window.MouseDown(point, MouseButton.Left);
+            window.MouseUp(point, MouseButton.Left);
+            window.Position = new PixelPoint(window.Position.X - 110, window.Position.Y - 70);
+            window.HideToTray();
+
+            Assert.True(settingsRequested);
+            Assert.Null(savedPosition);
+        }
+        finally
+        {
+            window.Close();
+            Application.Current.Styles.Remove(theme);
+        }
+    }, CancellationToken.None);
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
+    [InlineData(5)]
+    public Task TopPaddingAboveEachHeaderButtonStartsWindowDrag(int buttonIndex) => Session.Dispatch(() =>
+    {
+        var window = new UsageOverlayWindow();
+        try
+        {
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            PixelPoint? savedPosition = null;
+            window.CustomPositionChanged += position => savedPosition = position;
+            var title = window.GetVisualDescendants().OfType<TextBlock>()
+                .Single(text => text.Text == UiText.For(UiLanguage.English).CombinedUsageHeaderTitle);
+            var header = title.GetVisualAncestors().OfType<Grid>().First();
+            var buttons = header.Children.OfType<Button>().ToArray();
+            Assert.Equal(6, buttons.Length);
+            var button = buttons[buttonIndex];
+            var point = button.TranslatePoint(new Point(button.Bounds.Width / 2, -6), window)!.Value;
+            window.MouseDown(point, MouseButton.Left);
+            // Simulate the compositor reporting a manual move from the top strip.
+            var movedPosition = new PixelPoint(window.Position.X - 110, window.Position.Y - 70);
+            window.Position = movedPosition;
+            window.MouseUp(point, MouseButton.Left);
+            window.HideToTray();
+
+            Assert.Equal(movedPosition, savedPosition);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }, CancellationToken.None);
+
     [Fact]
     public Task FirstOpenedFrameAlreadyHasConfiguredSizeAndLayout() => Session.Dispatch(() =>
     {

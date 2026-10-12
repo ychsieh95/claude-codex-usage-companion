@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Automation;
+using Avalonia.Controls.Chrome;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Shapes;
 using Avalonia.Input;
@@ -197,7 +198,17 @@ public sealed class UsageOverlayWindow : Window
         Grid.SetRow(resizeGrip, 1);
         layout.Children.Add(resizeGrip);
         _root.Child = layout;
-        Content = _root;
+        // Reuse the existing top padding as a drag strip above every header button.
+        var topDragArea = new Border
+        {
+            Height = _root.Padding.Top,
+            Margin = new Thickness(_root.CornerRadius.TopLeft, _root.BorderThickness.Top,
+                _root.CornerRadius.TopRight, 0),
+            VerticalAlignment = VerticalAlignment.Top,
+            Background = Brushes.Transparent
+        };
+        ConfigureDragArea(topDragArea);
+        Content = new Grid { Children = { _root, topDragArea } };
         ApplyFontScale();
         ApplyCardHeights();
         // Initialize placeholder text, configured spacing, and fitted size
@@ -665,13 +676,28 @@ public sealed class UsageOverlayWindow : Window
         PositionOnPrimaryScreen();
     }
 
+    private void ConfigureDragArea(Control dragArea)
+    {
+        WindowDecorationProperties.SetElementRole(dragArea, WindowDecorationsElementRole.User);
+        dragArea.PointerPressed += HandleHeaderPointerPressed;
+        dragArea.PointerReleased += (_, _) =>
+        {
+            _manualDragResetTimer.Stop();
+            _manualDragResetTimer.Interval = TimeSpan.FromSeconds(1);
+            _manualDragResetTimer.Start();
+        };
+    }
+
     private Control CreateHeader()
     {
         var grid = new Grid
         {
             ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto,Auto,Auto,Auto,Auto"),
-            Height = 26
+            Height = 26,
+            Background = Brushes.Transparent
         };
+        // Route title-bar input through our handler so manual moves are persisted.
+        WindowDecorationProperties.SetElementRole(grid, WindowDecorationsElementRole.User);
         _headerTitle = new TextBlock
         {
             Text = _text.CombinedUsageHeaderTitle,
@@ -682,7 +708,6 @@ public sealed class UsageOverlayWindow : Window
             TextTrimming = TextTrimming.CharacterEllipsis,
             VerticalAlignment = VerticalAlignment.Center
         };
-        _headerTitle.PointerPressed += HandleHeaderPointerPressed;
 
         _shortcutsButton = HeaderButton("?", _text.ShortcutsAction);
         _shortcutsButton.Click += (_, _) => ShortcutsRequested?.Invoke(this, EventArgs.Empty);
@@ -713,13 +738,24 @@ public sealed class UsageOverlayWindow : Window
         _closeButton.Click += (_, _) => Close();
         Grid.SetColumn(_closeButton, 6);
 
-        grid.Children.Add(_headerTitle);
+        var dragArea = new Border
+        {
+            Background = Brushes.Transparent,
+            Child = _headerTitle
+        };
+        ConfigureDragArea(dragArea);
+        grid.Children.Add(dragArea);
         grid.Children.Add(_shortcutsButton);
         grid.Children.Add(_pinButton);
         grid.Children.Add(_settingsButton);
         grid.Children.Add(_refreshButton);
         grid.Children.Add(_minimizeButton);
         grid.Children.Add(_closeButton);
+        foreach (var button in new Control[]
+                 { _shortcutsButton, _pinButton, _settingsButton, _refreshButton, _minimizeButton, _closeButton })
+        {
+            WindowDecorationProperties.SetElementRole(button, WindowDecorationsElementRole.User);
+        }
         return grid;
     }
 
@@ -1129,10 +1165,17 @@ public sealed class UsageOverlayWindow : Window
         _manualDragResetTimer.Interval = TimeSpan.FromSeconds(10);
         _manualDragResetTimer.Start();
         BeginMoveDrag(eventArgs);
+        eventArgs.Handled = true;
     }
 
     private void PositionOnPrimaryScreen()
     {
+        // Layout updates must not reapply an anchor while a manual move starts.
+        if (_manualDragOrigin is not null)
+        {
+            return;
+        }
+
         if (_position == WindowPosition.Custom && _customPosition is { } customPosition)
         {
             if (Screens.All.Any(screen => screen.Bounds.Contains(customPosition)))

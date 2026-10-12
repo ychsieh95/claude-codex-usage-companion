@@ -247,6 +247,7 @@ public sealed class ClaudeUsageClientTests
         var credentialsPath = WriteCredentials(
             DateTimeOffset.UtcNow.AddHours(-9),
             refreshToken: "sk-ant-ort01-test");
+        var refreshedCredentialsPath = credentialsPath + ".refreshed";
         var tokenCalls = 0;
         string? usageToken = null;
         var handler = new RoutingHandler(
@@ -270,12 +271,15 @@ public sealed class ClaudeUsageClientTests
         try
         {
             // Stand in for the Claude CLI holding its refresh lock, then publishing a new token.
-            var cliLock = ClaudeCredentialsRefreshLock.TryAcquire(credentialsPath, TimeSpan.Zero);
+            using var cliLock = ClaudeCredentialsRefreshLock.TryAcquire(credentialsPath, TimeSpan.Zero);
             Assert.NotNull(cliLock);
-            var reading = Task.Run(() => client.ReadUsageAsync(CancellationToken.None));
+            // Publish a complete file atomically, so the first read cannot see
+            // an empty or partially written JSON document during replacement.
             File.WriteAllText(
-                credentialsPath,
+                refreshedCredentialsPath,
                 $$"""{"claudeAiOauth": {"accessToken": "sk-ant-oat01-cli", "refreshToken": "sk-ant-ort01-cli", "expiresAt": {{DateTimeOffset.UtcNow.AddHours(8).ToUnixTimeMilliseconds()}} } }""");
+            var reading = Task.Run(() => client.ReadUsageAsync(CancellationToken.None));
+            File.Move(refreshedCredentialsPath, credentialsPath, overwrite: true);
             cliLock!.Dispose();
 
             var state = await reading;
@@ -286,6 +290,7 @@ public sealed class ClaudeUsageClientTests
         }
         finally
         {
+            File.Delete(refreshedCredentialsPath);
             File.Delete(credentialsPath);
         }
     }
