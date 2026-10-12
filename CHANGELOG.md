@@ -8,17 +8,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
+- Version checks against the latest stable GitHub release, with a localized Check for updates button, status message, and release-page link in Settings.
+- A saved automatic update-check option, enabled by default, that checks at startup and every 24 hours while running and notifies when a newer version is available.
+- A collapsible Updates settings section with a saved expansion state.
 - A localized Reset to defaults button opens a Yes/No confirmation before restoring the settings form, including layout defaults; changes are saved only with OK/Apply.
 - Window movement and resizing on Wayland desktops, per-card vertical resizing, and a font-size slider with preview.
 - A `custom` window position that saves coordinates after dragging the app window and restores them at launch.
 - Custom panel background colors with optional alpha transparency, live preview, validation, and a theme-color fallback.
 - Configurable horizontal spacing between the 5h/Weekly labels and percentages (default 128 pixels), and between percentages and reset times (default 16 pixels).
-- Collapsible settings sections ordered A–Z: Appearance, Date and time, Logging, Notifications, Usage, and Window and startup.
+- Collapsible settings sections ordered by common tasks: Usage, Appearance, Window and startup, Notifications, Date and time, Logging, and Updates.
 - Expand all and Collapse all settings icons with localized tooltips and accessible labels. Each section’s state is saved on closing (including Cancel) and restored across app restarts without saving unapplied form edits.
 - `scripts/rebuild-reinstall.sh` stops the current user’s companion, runs the Linux build for the host architecture, reinstalls the generated `.deb` using `sudo apt reinstall -f`, and launches the installed app. A failed stop, build, or installation prevents relaunching.
 
 ### Changed
 
+- Reordered Settings to Usage, Appearance, Window and startup, Notifications, Date and time, Logging, and Updates.
+- Refreshed settings screenshots and update-check instructions in the English, Traditional Chinese, and Simplified Chinese READMEs.
 - Updated Avalonia dependencies to 12.1.3 and synchronized application, plugin, widget, and release artifact versions.
 - Redesigned the overlay with QuotaGem-inspired provider headings and compact rounded progress bars containing the usage label, remaining percentage, reset icon, and local reset time.
 - Aligned percentage and reset/status columns across providers. The panel fits its content and selected spacing; weekly credit and automatic reload details appear below the progress bars and remain available in tooltips.

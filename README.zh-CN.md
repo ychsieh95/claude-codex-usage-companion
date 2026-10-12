@@ -19,7 +19,9 @@ Claude Codex Usage Companion 是一款在 Linux 上运行的本地开源 Claude 
 
 面板采用参考 [QuotaGem](https://github.com/gyozalab/QuotaGem) 的提供方标题与圆角进度条，将 5h／每周标签、剩余百分比与本地重置时间放在同一行。各列保持对齐，面板根据内容调整大小，隐藏提供方时仍保持设置的屏幕位置。将鼠标移至每周进度条可查看点数信息。
 
-设置分组可点击标题展开或折叠，按英文标题 A–Z 排序。**全部展开**与**全部折叠**可一次控制所有分组。关闭设置时会保存各分组状态，即使点击**取消**也会保留；重新打开设置或重启程序后会恢复，未应用的表单更改仍会丢弃。**外观**设置提供背景颜色（`#RRGGBB` 或 `#AARRGGBB`，留空使用主题颜色），接着是标签与百分比间距（0–300 像素，默认 **128**）及百分比与重置时间间距（0–64 像素，默认 **16**）。更改会实时预览；**确定／应用**保存，**取消**恢复已保存的外观。已有间距设置会保留。
+设置分组可点击标题展开或折叠，按常用操作排序：**用量 → 外观 → 窗口与启动 → 通知 → 日期与时间 → 日志 → 更新**。**全部展开**与**全部折叠**可一次控制所有分组。关闭设置时会保存各分组状态，即使点击**取消**也会保留；重新打开设置或重启程序后会恢复，未应用的表单更改仍会丢弃。**外观**设置提供背景颜色（`#RRGGBB` 或 `#AARRGGBB`，留空使用主题颜色），接着是标签与百分比间距（0–300 像素，默认 **128**）及百分比与重置时间间距（0–64 像素，默认 **16**）。更改会实时预览；**确定／应用**保存，**取消**恢复已保存的外观。已有间距设置会保留。
+
+在**设置 → 更新**中，点击**检查更新**可比较当前版本与 GitHub 最新稳定版本。有新版本时，点击**打开版本页面**即可前往下载页面。**自动检查更新（启动时及每天）**默认启用，会在启动时及程序运行期间每 24 小时检查一次。取消勾选后点击**确定／应用**可禁用自动检查，仍可手动检查。自动检查发现新版本时会显示桌面通知；下载与安装需手动完成。手动检查的网络错误会显示在设置中，自动检查的错误则写入日志。
 
 隐藏提供方进度条只影响显示；关闭**启用 Claude 用量显示**或**启用 Codex 用量显示**才会停止该提供方的查询并清除其错误。已启用提供方的错误会保留至该提供方恢复正常，即使进度条已隐藏或另一提供方刷新成功也不会消失。完整版本信息请见[更新日志](CHANGELOG.md)。
 
@@ -196,17 +198,19 @@ ${XDG_CONFIG_HOME:-$HOME/.config}/claude-codex-usage-companion/settings.json
   "enableSystemTray": false,
   "trayIconStyle": "original",
   "showTaskbarIcon": true,
+  "enableAutoUpdateCheck": true,
   "startOnBoot": false,
   "minimizeOnStart": false,
   "language": "en-US",
   "theme": "system",
   "settingsSections": {
+    "usage": true,
     "appearance": true,
+    "window": true,
+    "notifications": true,
     "dateTime": true,
     "logging": true,
-    "notifications": true,
-    "usage": true,
-    "window": true
+    "updates": true
   },
   "backgroundColor": "",
   "percentageTimeSpacing": 16,

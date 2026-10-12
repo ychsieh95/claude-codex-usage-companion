@@ -43,6 +43,21 @@ public sealed record UiText(
     string SimplifiedChineseLanguage,
     string AuthorInfo)
 {
+    private string UpdateText(string english, string traditional, string simplified) => Language switch
+    {
+        UiLanguage.TraditionalChinese => traditional,
+        UiLanguage.SimplifiedChinese => simplified,
+        _ => english
+    };
+    public string UpdateSettingsGroup => UpdateText("Updates", "更新", "更新");
+    public string CheckForUpdatesAction => UpdateText("Check for updates", "檢查更新", "检查更新");
+    public string AutoUpdateCheckOption => UpdateText("Automatically check for updates (startup and daily)", "自動檢查更新（啟動時及每天）", "自动检查更新（启动时及每天）");
+    public string CheckingForUpdates => UpdateText("Checking for updates…", "正在檢查更新…", "正在检查更新…");
+    public string AppUpToDate => UpdateText("You’re up to date.", "目前已是最新版本。", "当前已是最新版本。");
+    public string UpdateCheckFailed => UpdateText("Unable to check for updates. Please try again later.", "無法檢查更新，請稍後再試。", "无法检查更新，请稍后重试。");
+    public string OpenReleaseAction => UpdateText("Open release page", "開啟版本頁面", "打开版本页面");
+    public string FormatAppUpdate(string version) => UpdateText($"Version {version} is available.", $"有新版本 {version} 可用。", $"有新版本 {version} 可用。");
+
     public string ResetDateTimeFormat { get; init; } = DateTimeFormatOptions.MonthDay;
     public string LastUpdatedDateTimeFormat { get; init; } =
         DateTimeFormatOptions.HourMinute;

@@ -16,6 +16,7 @@ public sealed record CompanionSettings
     public bool EnableSystemTray { get; init; }
     public string TrayIconStyle { get; init; } = TrayIconStyleOptions.Original;
     public bool ShowTaskbarIcon { get; init; } = true;
+    public bool EnableAutoUpdateCheck { get; init; } = true;
     public bool StartOnBoot { get; init; }
     public bool MinimizeOnStart { get; init; }
     public string Language { get; init; } =

@@ -6,6 +6,23 @@ namespace CodexUsageCompanion.Tests;
 public sealed class CompanionSettingsTests
 {
     [Fact]
+    public void AutoUpdateCheckDefaultsOnAndPersistsDisabled()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"CodexUsageCompanion.Tests.{Guid.NewGuid():N}");
+        var path = Path.Combine(directory, "settings.json");
+        try
+        {
+            Assert.True(CompanionSettingsStore.Load(path).EnableAutoUpdateCheck);
+            CompanionSettingsStore.Save(new CompanionSettings { EnableAutoUpdateCheck = false }, path);
+            Assert.False(CompanionSettingsStore.Load(path).EnableAutoUpdateCheck);
+        }
+        finally
+        {
+            if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
     public void LoadCreatesDefaultsWhenSettingsFileIsMissing()
     {
         var directory = Path.Combine(Path.GetTempPath(), $"CodexUsageCompanion.Tests.{Guid.NewGuid():N}");

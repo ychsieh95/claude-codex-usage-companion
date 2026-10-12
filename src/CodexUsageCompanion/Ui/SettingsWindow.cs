@@ -1,4 +1,5 @@
 using System.Reflection;
+using CodexUsageCompanion.Lifecycle;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Automation;
@@ -14,6 +15,9 @@ namespace CodexUsageCompanion.Ui;
 
 public sealed class SettingsWindow : Window
 {
+    private readonly CheckBox _autoUpdateCheck;
+    private readonly AppUpdateChecker _updateChecker = new();
+    private readonly CancellationTokenSource _updateCancellation = new();
     private CompanionSettings _settings;
     private readonly UiText _text;
     private readonly CheckBox _systemTray;
@@ -439,6 +443,48 @@ public sealed class SettingsWindow : Window
             FontSize = 12,
             TextWrapping = TextWrapping.Wrap
         };
+        _autoUpdateCheck = new CheckBox
+        {
+            Content = text.AutoUpdateCheckOption,
+            IsChecked = settings.EnableAutoUpdateCheck
+        };
+        var checkUpdate = new Button { Content = text.CheckForUpdatesAction };
+        var updateStatus = new TextBlock { TextWrapping = TextWrapping.Wrap };
+        var openRelease = new Button { Content = text.OpenReleaseAction, IsVisible = false };
+        Uri? releaseUrl = null;
+        openRelease.Click += async (_, _) =>
+        {
+            if (releaseUrl is null) return;
+            try
+            {
+                if (TopLevel.GetTopLevel(this) is { } topLevel)
+                    await topLevel.Launcher.LaunchUriAsync(releaseUrl);
+            }
+            catch (Exception)
+            {
+                updateStatus.Text = text.UpdateCheckFailed;
+            }
+        };
+        checkUpdate.Click += async (_, _) =>
+        {
+            checkUpdate.IsEnabled = false;
+            openRelease.IsVisible = false;
+            updateStatus.Text = text.CheckingForUpdates;
+            try
+            {
+                var result = await _updateChecker.CheckAsync(_updateCancellation.Token);
+                updateStatus.Text = result.UpdateAvailable ? text.FormatAppUpdate(result.Version) : text.AppUpToDate;
+                releaseUrl = result.ReleaseUrl;
+                openRelease.IsVisible = result.UpdateAvailable;
+            }
+            catch (OperationCanceledException) when (_updateCancellation.IsCancellationRequested) { }
+            catch (Exception)
+            {
+                updateStatus.Text = text.UpdateCheckFailed;
+            }
+            finally { checkUpdate.IsEnabled = true; }
+        };
+        Closed += (_, _) => _updateCancellation.Cancel();
         var appVersion = typeof(SettingsWindow).Assembly.GetName().Version?.ToString(3) ?? "0.0.0";
         var appVersionInfo = new TextBlock
         {
@@ -455,6 +501,7 @@ public sealed class SettingsWindow : Window
         var attributionInfo = new StackPanel
         {
             Margin = new Thickness(0, 12),
+            Spacing = 8,
             Children = { appVersionInfo, authorInfo }
         };
         _save = new Button
@@ -491,6 +538,17 @@ public sealed class SettingsWindow : Window
             Spacing = 12,
             Children =
             {
+                CreateSection("usage", text.UsageSettingsGroup,
+                _enableClaudeUsage,
+                _enableCodexUsage,
+                displayedLimitsLabel,
+                _showClaudeSession,
+                _showClaudeWeekly,
+                _showCodexFiveHour,
+                _showCodexWeekly,
+                updateIntervalLabel,
+                _updateInterval
+                ),
                 CreateSection("appearance", text.AppearanceSettingsGroup,
                 languageLabel,
                 _language,
@@ -507,6 +565,21 @@ public sealed class SettingsWindow : Window
                 positionLabel,
                 _position
                 ),
+                CreateSection("window", text.WindowSettingsGroup,
+                _systemTray,
+                trayIconStyleLabel,
+                _trayIconStyle,
+                _showTaskbarIcon,
+                _startOnBoot,
+                _minimizeOnStart,
+                _alwaysOnTop
+                ),
+                CreateSection("notifications", text.NotificationSettingsGroup,
+                _lowUsageAlert,
+                lowUsageAlertThresholdLabel,
+                _lowUsageAlertThreshold,
+                _notifyOnReset
+                ),
                 CreateSection("dateTime", text.DateTimeSettingsGroup,
                 resetDateTimeFormatLabel,
                 _resetDateTimeFormat,
@@ -521,31 +594,11 @@ public sealed class SettingsWindow : Window
                 _usageLogFilePath,
                 usageLogFormatLabel,
                 _usageLogFormat),
-                CreateSection("notifications", text.NotificationSettingsGroup,
-                _lowUsageAlert,
-                lowUsageAlertThresholdLabel,
-                _lowUsageAlertThreshold,
-                _notifyOnReset
-                ),
-                CreateSection("usage", text.UsageSettingsGroup,
-                _enableClaudeUsage,
-                _enableCodexUsage,
-                displayedLimitsLabel,
-                _showClaudeSession,
-                _showClaudeWeekly,
-                _showCodexFiveHour,
-                _showCodexWeekly,
-                updateIntervalLabel,
-                _updateInterval
-                ),
-                CreateSection("window", text.WindowSettingsGroup,
-                _systemTray,
-                trayIconStyleLabel,
-                _trayIconStyle,
-                _showTaskbarIcon,
-                _startOnBoot,
-                _minimizeOnStart,
-                _alwaysOnTop
+                CreateSection("updates", text.UpdateSettingsGroup,
+                _autoUpdateCheck,
+                checkUpdate,
+                updateStatus,
+                openRelease
                 )
             }
         };
@@ -615,7 +668,8 @@ public sealed class SettingsWindow : Window
         Logging = _sections["logging"].IsExpanded,
         Notifications = _sections["notifications"].IsExpanded,
         Usage = _sections["usage"].IsExpanded,
-        Window = _sections["window"].IsExpanded
+        Window = _sections["window"].IsExpanded,
+        Updates = _sections["updates"].IsExpanded
     };
 
     private void SetAllSectionsExpanded(bool expanded)
@@ -703,6 +757,7 @@ public sealed class SettingsWindow : Window
             _systemTray.IsChecked = defaults.EnableSystemTray;
             _trayIconStyle.SelectedItem = _trayIconStyle.Items.OfType<TrayIconStyleChoice>().First(choice => choice.Value == defaults.TrayIconStyle);
             _showTaskbarIcon.IsChecked = defaults.ShowTaskbarIcon;
+            _autoUpdateCheck.IsChecked = defaults.EnableAutoUpdateCheck;
             _startOnBoot.IsChecked = defaults.StartOnBoot;
             _minimizeOnStart.IsChecked = defaults.MinimizeOnStart;
             _alwaysOnTop.IsChecked = defaults.AlwaysOnTop;
@@ -901,6 +956,7 @@ public sealed class SettingsWindow : Window
                 (_trayIconStyle.SelectedItem as TrayIconStyleChoice)?.Value ??
                 TrayIconStyleOptions.Original,
             ShowTaskbarIcon = _showTaskbarIcon.IsChecked == true,
+            EnableAutoUpdateCheck = _autoUpdateCheck.IsChecked == true,
             StartOnBoot = _startOnBoot.IsChecked == true,
             MinimizeOnStart = _minimizeOnStart.IsChecked == true,
             AlwaysOnTop = _alwaysOnTop.IsChecked == true,

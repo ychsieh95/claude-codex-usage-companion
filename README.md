@@ -19,7 +19,9 @@ This Linux port is based on [gkfriend/codex-usage-companion](https://github.com/
 
 The panel now uses [QuotaGem](https://github.com/gyozalab/QuotaGem)-inspired provider headings and rounded bars, with the 5h/Weekly label, remaining percentage, and local reset time on one row. The columns stay aligned, and the panel fits its content and remains at the configured screen position when providers are hidden. Hover over a weekly bar to see credit details.
 
-Settings sections are collapsible and ordered A–Z. **Expand all** and **Collapse all** control every section. Each section’s state is saved when Settings closes, even after **Cancel**, and restored on reopening or after an app restart; unapplied form edits are still discarded. Under **Appearance**, configure the background color (`#RRGGBB` or `#AARRGGBB`; blank follows the theme), then the label-to-percentage gap (0–300 pixels, default **128**) and percentage-to-reset-time gap (0–64 pixels, default **16**). Changes preview immediately; **OK/Apply** saves them and **Cancel** restores the saved appearance. Existing saved spacing values are preserved.
+Settings sections are collapsible and ordered by common tasks: **Usage → Appearance → Window and startup → Notifications → Date and time → Logging → Updates**. **Expand all** and **Collapse all** control every section. Each section’s state is saved when Settings closes, even after **Cancel**, and restored on reopening or after an app restart; unapplied form edits are still discarded. Under **Appearance**, configure the background color (`#RRGGBB` or `#AARRGGBB`; blank follows the theme), then the label-to-percentage gap (0–300 pixels, default **128**) and percentage-to-reset-time gap (0–64 pixels, default **16**). Changes preview immediately; **OK/Apply** saves them and **Cancel** restores the saved appearance. Existing saved spacing values are preserved.
+
+Under **Settings → Updates**, use **Check for updates** to compare the installed version with the latest stable GitHub release. If a newer version is available, **Open release page** opens its download page. **Automatically check for updates (startup and daily)** is enabled by default and checks at startup and every 24 hours while the app runs. Clear the checkbox and choose **OK/Apply** to disable automatic checks; manual checks remain available. Automatic checks show a desktop notification when a newer version is available. Downloads and installation are manual. Network errors appear in Settings for manual checks and are logged for automatic checks.
 
 Hiding a provider's bars only changes its display. Turning off **Enable Claude usage** or **Enable Codex usage** stops that provider's polling and clears its errors. Errors from enabled providers remain visible until that provider recovers, even if its bars are hidden or another provider refreshes successfully. See the [changelog](CHANGELOG.md) for the full release notes.
 
@@ -196,17 +198,19 @@ ${XDG_CONFIG_HOME:-$HOME/.config}/claude-codex-usage-companion/settings.json
   "enableSystemTray": false,
   "trayIconStyle": "original",
   "showTaskbarIcon": true,
+  "enableAutoUpdateCheck": true,
   "startOnBoot": false,
   "minimizeOnStart": false,
   "language": "en-US",
   "theme": "system",
   "settingsSections": {
+    "usage": true,
     "appearance": true,
+    "window": true,
+    "notifications": true,
     "dateTime": true,
     "logging": true,
-    "notifications": true,
-    "usage": true,
-    "window": true
+    "updates": true
   },
   "backgroundColor": "",
   "percentageTimeSpacing": 16,

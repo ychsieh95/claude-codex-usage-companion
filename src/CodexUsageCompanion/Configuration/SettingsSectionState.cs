@@ -8,6 +8,7 @@ public sealed record SettingsSectionState
     public bool Notifications { get; init; } = true;
     public bool Usage { get; init; } = true;
     public bool Window { get; init; } = true;
+    public bool Updates { get; init; } = true;
 
     public bool IsExpanded(string key) => key switch
     {
@@ -17,6 +18,7 @@ public sealed record SettingsSectionState
         "notifications" => Notifications,
         "usage" => Usage,
         "window" => Window,
+        "updates" => Updates,
         _ => true
     };
 }

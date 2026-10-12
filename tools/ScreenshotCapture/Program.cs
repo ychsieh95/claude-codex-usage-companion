@@ -65,7 +65,20 @@ foreach (var (language, filename) in new[]
     window.Close();
 
     var text = UiText.For(language);
-    var settings = new SettingsWindow(new CompanionSettings { Theme = UiThemeOptions.Dark }, text);
+    var settings = new SettingsWindow(new CompanionSettings
+    {
+        Theme = UiThemeOptions.Dark,
+        SettingsSections = new SettingsSectionState
+        {
+            Usage = false,
+            Appearance = false,
+            Window = false,
+            Notifications = false,
+            DateTime = false,
+            Logging = false,
+            Updates = false
+        }
+    }, text);
     settings.Show();
     Capture(settings, filename.Replace("overlay-", "settings-"));
     var resetButton = settings.GetVisualDescendants().OfType<Button>()

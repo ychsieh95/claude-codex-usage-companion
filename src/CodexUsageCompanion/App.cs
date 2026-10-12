@@ -39,6 +39,11 @@ public sealed class App : Application
     private int? _renderedTrayRemainingPercent;
     private bool _shutdownRequested;
     private Task? _shutdownTask;
+    private readonly AppUpdateChecker _updateChecker = new();
+    private readonly CancellationTokenSource _updateCancellation = new();
+    private DispatcherTimer? _updateCheckTimer;
+    private bool _checkingUpdate;
+    private string? _notifiedUpdateVersion;
 
     public override void Initialize()
     {
@@ -95,6 +100,7 @@ public sealed class App : Application
             // Start independently of the window's Opened event so the first
             // refresh cannot be missed during framework initialization.
             _runtime.Start();
+            ConfigureUpdateChecks();
             var startHidden = _settings.StartOnBoot &&
                 _settings.MinimizeOnStart &&
                 GuiLaunchContext.LaunchedInBackground;
@@ -526,7 +532,9 @@ public sealed class App : Application
 
         var normalized = CompanionSettingsStore.Save(settings);
         SetAutostart(normalized.StartOnBoot);
+        var autoCheckChanged = _settings.EnableAutoUpdateCheck != normalized.EnableAutoUpdateCheck;
         _settings = normalized;
+        if (autoCheckChanged) ConfigureUpdateChecks();
         ApplyTheme(_settings.Theme);
         _text = ResolveText(_settings);
         _window!.ApplySettings(_settings, _text);
@@ -733,6 +741,8 @@ public sealed class App : Application
         }
 
         _shutdownRequested = true;
+        _updateCheckTimer?.Stop();
+        _updateCancellation.Cancel();
         _shutdownTask = ShutdownCoreAsync(_desktop);
         await _shutdownTask;
     }
@@ -783,6 +793,39 @@ public sealed class App : Application
             "shutdown",
             "Shutdown did not complete in time; exiting the process.");
         Environment.Exit(0);
+    }
+
+    private void ConfigureUpdateChecks()
+    {
+        _updateCheckTimer?.Stop();
+        if (!_settings.EnableAutoUpdateCheck || _shutdownRequested) return;
+        if (_updateCheckTimer is null)
+        {
+            _updateCheckTimer = new DispatcherTimer { Interval = TimeSpan.FromDays(1) };
+            _updateCheckTimer.Tick += async (_, _) => await CheckForAppUpdatesAsync();
+        }
+        _updateCheckTimer.Start();
+        _ = CheckForAppUpdatesAsync();
+    }
+
+    private async Task CheckForAppUpdatesAsync()
+    {
+        if (_checkingUpdate || _shutdownRequested || !_settings.EnableAutoUpdateCheck) return;
+        _checkingUpdate = true;
+        try
+        {
+            var result = await _updateChecker.CheckAsync(_updateCancellation.Token);
+            if (!_shutdownRequested && _settings.EnableAutoUpdateCheck && result.UpdateAvailable &&
+                _notifiedUpdateVersion != result.Version)
+            {
+                _notifiedUpdateVersion = result.Version;
+                _notificationService.Show("Claude Codex Usage Companion",
+                    _text.FormatAppUpdate(result.Version) + "\n" + result.ReleaseUrl, critical: false);
+            }
+        }
+        catch (OperationCanceledException) when (_updateCancellation.IsCancellationRequested) { }
+        catch (Exception exception) { CompanionLog.Shared.Write("update-check", exception); }
+        finally { _checkingUpdate = false; }
     }
 
     private static UiText ResolveText(CompanionSettings settings)
