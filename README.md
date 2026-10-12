@@ -284,6 +284,8 @@ To rebuild, reinstall, and restart the installed app:
 
 This stops your running companion, builds for the host architecture, runs `sudo apt reinstall -f` on the generated `.deb`, and launches the installed command. Run the script as your normal desktop user; sudo is requested only for package installation. The script stops on failure.
 
+Local rebuild/reinstall runs disable NuGet vulnerability auditing to avoid `NU1900` warnings when the audit service is unreachable. Package downloads still require access to NuGet when dependencies are not cached. Use `NUGET_AUDIT=true ./scripts/rebuild-reinstall.sh` to enable auditing. Direct `build-linux.sh` runs and CI keep auditing enabled by default.
+
 The build runs the test suite and writes a `.deb`, portable `.tar.gz`, Plasma `.plasmoid`, Codex marketplace `.zip`, and checksums under `artifacts/`.
 
 For a development run:

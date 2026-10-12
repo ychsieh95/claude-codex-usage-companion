@@ -37,7 +37,8 @@ else
 fi
 
 info "Building the Linux package."
-bash "$ROOT/scripts/build-linux.sh" "$RID"
+# Local reinstalls can use cached packages without contacting the audit service.
+NUGET_AUDIT="${NUGET_AUDIT:-false}" bash "$ROOT/scripts/build-linux.sh" "$RID"
 
 shopt -s nullglob
 packages=("$ROOT"/artifacts/claude-codex-usage-companion_*_"$DEB_ARCH".deb)

@@ -8,6 +8,7 @@ PROJECT="$ROOT/src/CodexUsageCompanion/CodexUsageCompanion.csproj"
 SOLUTION="$ROOT/CodexUsageCompanion.slnx"
 ARTIFACTS="$ROOT/artifacts"
 RID="${1:-linux-x64}"
+NUGET_AUDIT="${NUGET_AUDIT:-true}"
 
 info "Preparing Linux release build for $RID."
 
@@ -43,8 +44,11 @@ mkdir -p "$PUBLISH"
 ok "Artifact directory prepared."
 
 info "Restoring .NET dependencies."
-dotnet restore "$SOLUTION" -m:1 --disable-parallel
-dotnet restore "$PROJECT" --runtime "$RID" -m:1 --disable-parallel
+if [[ "$NUGET_AUDIT" == false ]]; then
+  note "NuGet vulnerability audit disabled for this build (NUGET_AUDIT=false)."
+fi
+dotnet restore "$SOLUTION" -m:1 --disable-parallel -p:NuGetAudit="$NUGET_AUDIT"
+dotnet restore "$PROJECT" --runtime "$RID" -m:1 --disable-parallel -p:NuGetAudit="$NUGET_AUDIT"
 ok "Dependencies restored."
 
 info "Running the release test suite."
