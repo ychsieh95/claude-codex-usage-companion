@@ -13,7 +13,7 @@ Claude Codex Usage Companion 是一款在 Linux 上运行的本地开源 Claude 
 - 四种系统托盘图标样式：原始图标、Claude 会话剩余用量、Claude 每周剩余用量和 Codex 会话剩余用量。
 - 不含遥测。程序会在原始文件中更新现有 Claude 凭据，且不会将 token 写入日志。
 
-此 Linux 移植版基于 [gkfriend/codex-usage-companion](https://github.com/gkfriend/codex-usage-companion)；原始实现以 Windows/WPF 为目标。
+此 Linux 移植版基于 [gkfriend/codex-usage-companion](https://github.com/gkfriend/codex-usage-companion)。原始实现以 Windows/WPF 为目标。
 
 ## v0.1.3
 
@@ -325,7 +325,7 @@ ${XDG_CONFIG_HOME:-$HOME/.config}/claude-codex-usage-companion/settings.json
 
 在设置中，按 `Ctrl+S` 可保存更改。按 `Esc` 可关闭设置。如果仍有未保存的更改，程序会在丢弃更改前要求确认。
 
-**更新间隔** 设置提供 1 至 60 分钟的常用值。当前的 1 分钟间隔是默认值和最小值；以前保存在此范围内的自定义间隔仍可选择。
+**更新间隔** 设置提供 1 至 60 分钟的常用值。当前的 1 分钟间隔是默认值和最小值。以前保存在此范围内的自定义间隔仍可选择。
 
 低用量通知默认禁用。启用后，程序会比较 5 小时及每周剩余用量与设置的阈值。阈值范围为 `1`–`100`%。任一剩余用量低于阈值时，程序会发送一次桌面通知。剩余用量恢复到阈值或以上后，该通知可再次触发。
 
