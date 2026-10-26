@@ -579,8 +579,8 @@ public sealed class UsageOverlayWindow : Window
         var progressHeight = Math.Max(36, height -
             (card.Details.IsVisible ? Math.Max(20, card.Details.DesiredSize.Height) : 0));
         card.Progress.Height = progressHeight;
-        foreach (var cell in card.Cells) cell.Height = progressHeight;
-        foreach (var fill in card.Fills) fill.Height = progressHeight;
+        card.Track.Height = progressHeight;
+        card.Fill.Height = progressHeight;
     }
 
     private void ApplyFontScale()
@@ -916,36 +916,22 @@ public sealed class UsageOverlayWindow : Window
         Grid.SetColumnSpan(details, 2);
         grid.Children.Add(details);
 
-        var bar = new Grid
+        // A single translucent fill avoids seams between fractional-width segments.
+        var fill = new Border
         {
-            ColumnDefinitions = new ColumnDefinitions("*,*,*,*,*"),
-            VerticalAlignment = VerticalAlignment.Bottom
+            Width = 0,
+            Opacity = 0.35,
+            Height = 36,
+            HorizontalAlignment = HorizontalAlignment.Left
         };
-        var fills = new Border[5];
-        var cells = new Border[5];
-        for (var index = 0; index < fills.Length; index++)
+        var track = new Border
         {
-            var fill = new Border
-            {
-                Width = 0,
-                Opacity = 0.35,
-                Height = 36,
-                HorizontalAlignment = HorizontalAlignment.Left,
-                CornerRadius = new CornerRadius(0)
-            };
-            var cell = new Border
-            {
-                Height = 36,
-                Background = Brush("#FF4A4D49"),
-                CornerRadius = new CornerRadius(0),
-                Child = fill,
-                ClipToBounds = true
-            };
-            cells[index] = cell;
-            fills[index] = fill;
-            Grid.SetColumn(cell, index);
-            bar.Children.Add(cell);
-        }
+            Height = 36,
+            Background = Brush("#FF4A4D49"),
+            VerticalAlignment = VerticalAlignment.Bottom,
+            Child = fill,
+            ClipToBounds = true
+        };
 
         var resetIcon = new TextBlock
         {
@@ -970,7 +956,7 @@ public sealed class UsageOverlayWindow : Window
             CornerRadius = new CornerRadius(6),
             ClipToBounds = true,
             VerticalAlignment = VerticalAlignment.Bottom,
-            Child = new Grid { Children = { bar, labels } }
+            Child = new Grid { Children = { track, labels } }
         };
         Grid.SetRow(progress, 0);
         Grid.SetColumnSpan(progress, 2);
@@ -1055,9 +1041,9 @@ public sealed class UsageOverlayWindow : Window
         };
         resizeStrip.PointerCaptureLost += (_, _) => dragging = false;
         var card = new UsageCardControls(container, titleText, remaining, reset,
-            resetIcon, details, labels, cells, fills, resizeStrip, progress);
+            resetIcon, details, labels, track, fill, resizeStrip, progress);
         UpdateCardResizeHint(card);
-        foreach (var cell in cells) cell.SizeChanged += (_, _) => UpdateBarFillWidths(card);
+        track.SizeChanged += (_, _) => UpdateBarFillWidth(card);
         return card;
     }
 
@@ -1135,22 +1121,15 @@ public sealed class UsageOverlayWindow : Window
     private void ApplyBar(UsageCardControls card, int remainingPercent, UsageSignal signal)
     {
         var color = SignalBrush(signal);
-        var ratios = UsagePresentation.GetCellFillRatios(remainingPercent);
         card.Remaining.Foreground = Brush(_palette.CardTitle);
-        card.FillRatios = ratios;
-        for (var index = 0; index < card.Fills.Length; index++)
-        {
-            card.Fills[index].Background = color;
-        }
-        UpdateBarFillWidths(card);
+        card.FillRatio = Math.Clamp(remainingPercent, 0, 100) / 100d;
+        card.Fill.Background = color;
+        UpdateBarFillWidth(card);
     }
 
-    private static void UpdateBarFillWidths(UsageCardControls card)
+    private static void UpdateBarFillWidth(UsageCardControls card)
     {
-        for (var index = 0; index < card.Fills.Length; index++)
-        {
-            card.Fills[index].Width = card.Cells[index].Bounds.Width * card.FillRatios[index];
-        }
+        card.Fill.Width = card.Track.Bounds.Width * card.FillRatio;
     }
 
     private void HandleHeaderPointerPressed(object? sender, PointerPressedEventArgs eventArgs)
@@ -1249,10 +1228,7 @@ public sealed class UsageOverlayWindow : Window
         card.Reset.Foreground = Brush(_palette.SecondaryText);
         card.ResetIcon.Foreground = Brush(_palette.SecondaryText);
         card.Details.Foreground = Brush(_palette.SecondaryText);
-        foreach (var cell in card.Cells)
-        {
-            cell.Background = Brush(_palette.EmptyCell);
-        }
+        card.Track.Background = Brush(_palette.EmptyCell);
     }
 
     private SolidColorBrush SignalBrush(UsageSignal signal) => signal switch
@@ -1274,11 +1250,11 @@ public sealed class UsageOverlayWindow : Window
         TextBlock ResetIcon,
         TextBlock Details,
         Grid Labels,
-        Border[] Cells,
-        Border[] Fills,
+        Border Track,
+        Border Fill,
         Border ResizeStrip,
         Border Progress)
     {
-        public double[] FillRatios { get; set; } = new double[5];
+        public double FillRatio { get; set; }
     }
 }
