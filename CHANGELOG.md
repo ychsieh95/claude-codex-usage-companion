@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- Updated the CI and release workflows to `actions/checkout@v7`, `actions/setup-dotnet@v6`, and `actions/upload-artifact@v7`, which run on Node.js 24 instead of the deprecated Node.js 20.
+
 ## [0.1.5] - 2026-11-23
 
 ### Added
