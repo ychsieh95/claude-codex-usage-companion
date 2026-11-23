@@ -46,6 +46,7 @@ jobs:
             artifacts/*.deb
             artifacts/*.snap
             artifacts/*.tar.gz
+            artifacts/*.plasmoid
             artifacts/*.zip
             artifacts/SHA256SUMS
           )
