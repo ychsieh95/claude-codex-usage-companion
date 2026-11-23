@@ -54,6 +54,27 @@ public static class LinuxAutostartManager
         File.WriteAllText(path, content, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
     }
 
+    // Inside a snap, the process path contains the revision (for example
+    // /snap/<name>/x3/...), which disappears after a refresh. Use the stable
+    // /snap/bin launcher so the autostart entry survives updates.
+    public static string ResolveLaunchPath(
+        string executablePath,
+        string? snapDirectory,
+        string? snapInstanceName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(executablePath);
+        if (string.IsNullOrWhiteSpace(snapDirectory) ||
+            string.IsNullOrWhiteSpace(snapInstanceName) ||
+            !executablePath.StartsWith(
+                snapDirectory.TrimEnd('/') + "/",
+                StringComparison.Ordinal))
+        {
+            return executablePath;
+        }
+
+        return $"/snap/bin/{snapInstanceName}";
+    }
+
     internal static string QuoteExecArgument(string argument)
     {
         var escaped = argument

@@ -628,7 +628,11 @@ public sealed class App : Application
             throw new InvalidOperationException("The application executable path is unavailable.");
         }
 
-        LinuxAutostartManager.SetEnabled(enabled, executablePath);
+        var launchPath = LinuxAutostartManager.ResolveLaunchPath(
+            executablePath,
+            Environment.GetEnvironmentVariable("SNAP"),
+            Environment.GetEnvironmentVariable("SNAP_INSTANCE_NAME"));
+        LinuxAutostartManager.SetEnabled(enabled, launchPath);
     }
 
     private void HandleUsageUpdated(UsageProvider provider, RateLimitState state, DateTimeOffset updatedAt)

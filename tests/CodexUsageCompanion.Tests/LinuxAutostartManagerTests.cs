@@ -53,4 +53,27 @@ public sealed class LinuxAutostartManagerTests
                 "claude-codex-usage-companion",
                 Path.Combine(Path.GetTempPath(), "unused.desktop")));
     }
+
+    [Fact]
+    public void ResolveLaunchPathUsesStableSnapLauncherInsideSnap()
+    {
+        Assert.Equal(
+            "/snap/bin/claude-codex-usage-companion",
+            LinuxAutostartManager.ResolveLaunchPath(
+                "/snap/claude-codex-usage-companion/x3/bin/CodexUsageCompanion",
+                "/snap/claude-codex-usage-companion/x3",
+                "claude-codex-usage-companion"));
+    }
+
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData("", "claude-codex-usage-companion")]
+    [InlineData("/snap/other-app/12", "other-app")]
+    public void ResolveLaunchPathKeepsPathOutsideSnap(string? snapDirectory, string? snapInstanceName)
+    {
+        const string executablePath = "/usr/lib/claude-codex-usage-companion/CodexUsageCompanion";
+        Assert.Equal(
+            executablePath,
+            LinuxAutostartManager.ResolveLaunchPath(executablePath, snapDirectory, snapInstanceName));
+    }
 }
