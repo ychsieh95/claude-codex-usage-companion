@@ -32,6 +32,7 @@ public sealed class SettingsWindow : Window
     private readonly CheckBox _showClaudeWeekly;
     private readonly CheckBox _showCodexFiveHour;
     private readonly CheckBox _showCodexWeekly;
+    private readonly CheckBox _showPacePointer;
     private readonly CheckBox _lowUsageAlert;
     private readonly NumericUpDown _lowUsageAlertThreshold;
     private readonly CheckBox _notifyOnReset;
@@ -158,6 +159,11 @@ public sealed class SettingsWindow : Window
             Content = text.ShowCodexWeeklyOption,
             IsChecked = settings.ShowCodexWeekly,
             Margin = new Thickness(16, 0, 0, 0)
+        };
+        _showPacePointer = new CheckBox
+        {
+            Content = text.ShowPacePointerOption,
+            IsChecked = settings.ShowPacePointer
         };
         _enableClaudeUsage.IsCheckedChanged += (_, _) =>
             UpdateDisplayedLimitControls();
@@ -546,6 +552,7 @@ public sealed class SettingsWindow : Window
                 _showClaudeWeekly,
                 _showCodexFiveHour,
                 _showCodexWeekly,
+                _showPacePointer,
                 updateIntervalLabel,
                 _updateInterval
                 ),
@@ -767,6 +774,7 @@ public sealed class SettingsWindow : Window
             _showClaudeWeekly.IsChecked = defaults.ShowClaudeWeekly;
             _showCodexFiveHour.IsChecked = defaults.ShowCodexFiveHour;
             _showCodexWeekly.IsChecked = defaults.ShowCodexWeekly;
+            _showPacePointer.IsChecked = defaults.ShowPacePointer;
             _language.SelectedItem = _language.Items.OfType<LanguageChoice>().First(choice => choice.Value == defaults.Language);
             _theme.SelectedItem = _theme.Items.OfType<ThemeChoice>().First(choice => choice.Value == defaults.Theme);
             _fontSizeSlider.Value = defaults.FontScale * 100;
@@ -966,6 +974,7 @@ public sealed class SettingsWindow : Window
             ShowClaudeWeekly = _showClaudeWeekly.IsChecked == true,
             ShowCodexFiveHour = _showCodexFiveHour.IsChecked == true,
             ShowCodexWeekly = _showCodexWeekly.IsChecked == true,
+            ShowPacePointer = _showPacePointer.IsChecked == true,
             Language = (_language.SelectedItem as LanguageChoice)?.Value ?? "en-US",
             Theme = (_theme.SelectedItem as ThemeChoice)?.Value ?? UiThemeOptions.System,
             FontScale = OverlayLayoutOptions.NormalizeFontScale(_fontSizeSlider.Value / 100),

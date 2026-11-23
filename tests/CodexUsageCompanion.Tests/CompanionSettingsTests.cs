@@ -35,6 +35,7 @@ public sealed class CompanionSettingsTests
             Assert.True(settings.ShowClaudeSession);
             Assert.True(settings.ShowClaudeWeekly);
             Assert.True(settings.ShowCodexWeekly);
+            Assert.True(settings.ShowPacePointer);
             Assert.True(settings.EnableCodexUsage);
             Assert.True(settings.EnableClaudeUsage);
             Assert.False(settings.EnableSystemTray);

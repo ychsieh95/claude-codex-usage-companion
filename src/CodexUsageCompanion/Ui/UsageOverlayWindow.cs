@@ -4,6 +4,7 @@ using Avalonia.Automation;
 using Avalonia.Controls.Chrome;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Shapes;
+using ShapePath = Avalonia.Controls.Shapes.Path;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
@@ -60,6 +61,11 @@ public sealed class UsageOverlayWindow : Window
     {
         Interval = TimeSpan.FromSeconds(1)
     };
+    // The even-pace pointer moves with the clock, not only when new usage arrives.
+    private readonly DispatcherTimer _paceMarkerTimer = new()
+    {
+        Interval = TimeSpan.FromMinutes(1)
+    };
     private readonly int _margin;
     private bool _trayEnabled;
     private bool _showTaskbarIcon;
@@ -67,6 +73,7 @@ public sealed class UsageOverlayWindow : Window
     private bool _showClaudeWeekly;
     private bool _showCodexFiveHour;
     private bool _showCodexWeekly;
+    private bool _showPacePointer = true;
     private bool _codexEnabled;
     private bool _claudeEnabled;
     private double _fontScale;
@@ -100,6 +107,8 @@ public sealed class UsageOverlayWindow : Window
             _manualDragResetTimer.Stop();
             _manualDragOrigin = null;
         };
+        _paceMarkerTimer.Tick += (_, _) => UpdatePaceMarkers();
+        _paceMarkerTimer.Start();
         _margin = settings.Margin;
         _trayEnabled = settings.EnableSystemTray;
         _showTaskbarIcon = settings.ShowTaskbarIcon;
@@ -107,6 +116,7 @@ public sealed class UsageOverlayWindow : Window
         _showClaudeWeekly = settings.ShowClaudeWeekly;
         _showCodexFiveHour = settings.ShowCodexFiveHour;
         _showCodexWeekly = settings.ShowCodexWeekly;
+        _showPacePointer = settings.ShowPacePointer;
         _codexEnabled = settings.EnableCodexUsage;
         _claudeEnabled = settings.EnableClaudeUsage;
         _usageStatus.ApplyProviders(settings);
@@ -218,7 +228,12 @@ public sealed class UsageOverlayWindow : Window
         ActualThemeVariantChanged += (_, _) => ApplyThemePalette();
         SizeChanged += HandleWindowSizeChanged;
         PositionChanged += HandlePositionChanged;
-        Closed += (_, _) => { FlushCustomPosition(); _manualDragResetTimer.Stop(); };
+        Closed += (_, _) =>
+        {
+            FlushCustomPosition();
+            _manualDragResetTimer.Stop();
+            _paceMarkerTimer.Stop();
+        };
 
         Opened += (_, _) =>
         {
@@ -356,6 +371,7 @@ public sealed class UsageOverlayWindow : Window
         _showClaudeWeekly = settings.ShowClaudeWeekly;
         _showCodexFiveHour = settings.ShowCodexFiveHour;
         _showCodexWeekly = settings.ShowCodexWeekly;
+        _showPacePointer = settings.ShowPacePointer;
         _codexEnabled = settings.EnableCodexUsage;
         _claudeEnabled = settings.EnableClaudeUsage;
         _usageStatus.ApplyProviders(settings);
@@ -950,13 +966,43 @@ public sealed class UsageOverlayWindow : Window
         Grid.SetColumn(resetIcon, 2);
         Grid.SetColumn(reset, 3);
         Grid.SetColumnSpan(reset, 1);
+        // Even-pace pointer: short ticks on the top and bottom edges, so it
+        // stays clear of the labels drawn across the middle of the bar.
+        var paceMarker = new Grid
+        {
+            Width = PaceMarkerWidth,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Background = Brushes.Transparent,
+            IsVisible = false,
+            Children =
+            {
+                new ShapePath
+                {
+                    Data = Geometry.Parse("M0,0 L10,0 L5,6 Z"),
+                    VerticalAlignment = VerticalAlignment.Top,
+                    HorizontalAlignment = HorizontalAlignment.Center
+                },
+                new ShapePath
+                {
+                    Data = Geometry.Parse("M0,6 L10,6 L5,0 Z"),
+                    VerticalAlignment = VerticalAlignment.Bottom,
+                    HorizontalAlignment = HorizontalAlignment.Center
+                },
+                new Border
+                {
+                    Width = 1,
+                    Opacity = 0.35,
+                    HorizontalAlignment = HorizontalAlignment.Center
+                }
+            }
+        };
         var progress = new Border
         {
             Height = 36,
             CornerRadius = new CornerRadius(6),
             ClipToBounds = true,
             VerticalAlignment = VerticalAlignment.Bottom,
-            Child = new Grid { Children = { track, labels } }
+            Child = new Grid { Children = { track, labels, paceMarker } }
         };
         Grid.SetRow(progress, 0);
         Grid.SetColumnSpan(progress, 2);
@@ -1041,7 +1087,7 @@ public sealed class UsageOverlayWindow : Window
         };
         resizeStrip.PointerCaptureLost += (_, _) => dragging = false;
         var card = new UsageCardControls(container, titleText, remaining, reset,
-            resetIcon, details, labels, track, fill, resizeStrip, progress);
+            resetIcon, details, labels, track, fill, resizeStrip, progress, paceMarker);
         UpdateCardResizeHint(card);
         track.SizeChanged += (_, _) => UpdateBarFillWidth(card);
         return card;
@@ -1103,6 +1149,7 @@ public sealed class UsageOverlayWindow : Window
         bool dataAvailable)
     {
         card.ResetIcon.Opacity = state?.ResetsAt is not null ? 1 : 0;
+        card.WindowState = state;
         if (state is null)
         {
             card.Remaining.Text = _text.RemainingUnavailable;
@@ -1127,9 +1174,38 @@ public sealed class UsageOverlayWindow : Window
         UpdateBarFillWidth(card);
     }
 
-    private static void UpdateBarFillWidth(UsageCardControls card)
+    private void UpdateBarFillWidth(UsageCardControls card)
     {
         card.Fill.Width = card.Track.Bounds.Width * card.FillRatio;
+        UpdatePaceMarker(card);
+    }
+
+    private void UpdatePaceMarkers()
+    {
+        foreach (var card in new[]
+                 { _claudeFiveHourCard, _claudeWeeklyCard, _codexFiveHourCard, _codexWeeklyCard })
+        {
+            UpdatePaceMarker(card);
+        }
+    }
+
+    private void UpdatePaceMarker(UsageCardControls card)
+    {
+        var now = DateTimeOffset.UtcNow;
+        if (!_showPacePointer ||
+            UsagePresentation.GetPaceMarkerRatio(card.WindowState, now) is not double ratio ||
+            UsagePresentation.GetElapsedRatio(card.WindowState, now) is not double elapsed)
+        {
+            card.PaceMarker.IsVisible = false;
+            return;
+        }
+
+        var width = card.Track.Bounds.Width;
+        var left = Math.Clamp(width * ratio - PaceMarkerWidth / 2, 0, Math.Max(0, width - PaceMarkerWidth));
+        card.PaceMarker.Margin = new Thickness(left, 0, 0, 0);
+        card.PaceMarker.IsVisible = true;
+        ToolTip.SetTip(card.PaceMarker,
+            _text.FormatPaceMarkerTooltip((int)Math.Round(elapsed * 100, MidpointRounding.AwayFromZero)));
     }
 
     private void HandleHeaderPointerPressed(object? sender, PointerPressedEventArgs eventArgs)
@@ -1229,6 +1305,19 @@ public sealed class UsageOverlayWindow : Window
         card.ResetIcon.Foreground = Brush(_palette.SecondaryText);
         card.Details.Foreground = Brush(_palette.SecondaryText);
         card.Track.Background = Brush(_palette.EmptyCell);
+        var markerBrush = Brush(_palette.CardTitle);
+        foreach (var child in card.PaceMarker.Children)
+        {
+            switch (child)
+            {
+                case ShapePath path:
+                    path.Fill = markerBrush;
+                    break;
+                case Border line:
+                    line.Background = markerBrush;
+                    break;
+            }
+        }
     }
 
     private SolidColorBrush SignalBrush(UsageSignal signal) => signal switch
@@ -1239,6 +1328,8 @@ public sealed class UsageOverlayWindow : Window
         UsageSignal.Red => Brush(_palette.Red),
         _ => Brush(_palette.Gray)
     };
+
+    private const double PaceMarkerWidth = 10;
 
     private static SolidColorBrush Brush(string color) => new(Color.Parse(color));
 
@@ -1253,8 +1344,11 @@ public sealed class UsageOverlayWindow : Window
         Border Track,
         Border Fill,
         Border ResizeStrip,
-        Border Progress)
+        Border Progress,
+        Grid PaceMarker)
     {
         public double FillRatio { get; set; }
+
+        public RateLimitWindowState? WindowState { get; set; }
     }
 }

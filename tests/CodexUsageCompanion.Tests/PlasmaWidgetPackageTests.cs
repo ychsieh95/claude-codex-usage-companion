@@ -87,5 +87,6 @@ public sealed class PlasmaWidgetPackageTests
         Assert.Equal("true", entries["showClaudeWeekly"]);
         Assert.Equal("true", entries["showCodexFiveHour"]);
         Assert.Equal("true", entries["showCodexWeekly"]);
+        Assert.Equal("true", entries["showPacePointer"]);
     }
 }

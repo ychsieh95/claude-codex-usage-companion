@@ -1,3 +1,4 @@
+using CodexUsageCompanion.RateLimits;
 using CodexUsageCompanion.Ui;
 using Xunit;
 
@@ -18,6 +19,42 @@ public sealed class UsagePresentationTests
     public void GetSignalUsesApprovedThresholds(int remainingPercent, UsageSignal expected)
     {
         Assert.Equal(expected, UsagePresentation.GetSignal(remainingPercent));
+    }
+
+    [Fact]
+    public void GetPaceMarkerRatioPlacesPointerAtTimeStillToCome()
+    {
+        var now = DateTimeOffset.FromUnixTimeSeconds(1_000_000);
+        // A 5h window that resets in 2h: 60% has passed, so the pointer sits at 40%.
+        var state = new RateLimitWindowState(50, 300, now.ToUnixTimeSeconds() + 2 * 3600);
+
+        Assert.Equal(0.6, UsagePresentation.GetElapsedRatio(state, now)!.Value, 6);
+        Assert.Equal(0.4, UsagePresentation.GetPaceMarkerRatio(state, now)!.Value, 6);
+    }
+
+    [Fact]
+    public void GetPaceMarkerRatioClampsResetFurtherThanOneWindow()
+    {
+        var now = DateTimeOffset.FromUnixTimeSeconds(1_000_000);
+        var state = new RateLimitWindowState(100, 300, now.ToUnixTimeSeconds() + 6 * 3600);
+
+        Assert.Equal(1d, UsagePresentation.GetPaceMarkerRatio(state, now));
+    }
+
+    [Theory]
+    [InlineData(null, 3600L)]
+    [InlineData(0, 3600L)]
+    [InlineData(300, null)]
+    [InlineData(300, 0L)]
+    [InlineData(300, -60L)]
+    public void GetPaceMarkerRatioIsNullWithoutUsableTiming(int? durationMins, long? resetOffsetSeconds)
+    {
+        var now = DateTimeOffset.FromUnixTimeSeconds(1_000_000);
+        var state = new RateLimitWindowState(50, durationMins,
+            resetOffsetSeconds is long offset ? now.ToUnixTimeSeconds() + offset : null);
+
+        Assert.Null(UsagePresentation.GetPaceMarkerRatio(state, now));
+        Assert.Null(UsagePresentation.GetPaceMarkerRatio(null, now));
     }
 
     [Fact]

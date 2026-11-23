@@ -208,6 +208,23 @@ public sealed record UiText(
             ? "剩余 --"
             : "剩餘 --";
 
+    public string FormatPaceMarkerTooltip(int elapsedPercent) => Language switch
+    {
+        UiLanguage.TraditionalChinese =>
+            $"平均速度指標：此週期已過 {elapsedPercent}%。若用量條在指標左側結束，代表使用速度比平均快。",
+        UiLanguage.SimplifiedChinese =>
+            $"平均速度指针：此周期已过 {elapsedPercent}%。若用量条在指针左侧结束，表示使用速度比平均快。",
+        _ => $"Even-pace pointer: {elapsedPercent}% of this window has passed. " +
+             "A bar that ends before the pointer means you are using it faster than an even pace."
+    };
+
+    public string ShowPacePointerOption => Language switch
+    {
+        UiLanguage.TraditionalChinese => "在進度條上顯示平均速度指標",
+        UiLanguage.SimplifiedChinese => "在进度条上显示平均速度指针",
+        _ => "Show even-pace pointer on bars"
+    };
+
     public string EnableCodexUsageOption => Language switch
     {
         UiLanguage.TraditionalChinese => "啟用 Codex 用量顯示",

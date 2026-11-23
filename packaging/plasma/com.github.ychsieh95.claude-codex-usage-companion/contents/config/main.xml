@@ -34,5 +34,9 @@
       <label>Show Codex weekly usage in the panel</label>
       <default>true</default>
     </entry>
+    <entry name="showPacePointer" type="Bool">
+      <label>Show the even-pace pointer on usage bars in the expanded popup</label>
+      <default>true</default>
+    </entry>
   </group>
 </kcfg>

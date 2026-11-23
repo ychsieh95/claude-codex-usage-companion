@@ -15,12 +15,14 @@ KCM.SimpleKCM {
     property alias cfg_showClaudeWeekly: showClaudeWeekly.checked
     property alias cfg_showCodexFiveHour: showCodexFiveHour.checked
     property alias cfg_showCodexWeekly: showCodexWeekly.checked
+    property alias cfg_showPacePointer: showPacePointer.checked
     property int cfg_compactViewStyleDefault: 0
     property int cfg_refreshIntervalMinutesDefault: 1
     property bool cfg_showClaudeSessionDefault: true
     property bool cfg_showClaudeWeeklyDefault: true
     property bool cfg_showCodexFiveHourDefault: true
     property bool cfg_showCodexWeeklyDefault: true
+    property bool cfg_showPacePointerDefault: true
 
     Kirigami.FormLayout {
         QQC2.ComboBox {
@@ -81,6 +83,17 @@ KCM.SimpleKCM {
                 + i18n("Selections apply to both the panel and the expanded popup.")
             wrapMode: Text.WordWrap
             opacity: 0.7
+        }
+
+        Kirigami.Heading {
+            text: i18n("Usage bars")
+            level: 3
+            Kirigami.FormData.isSection: true
+        }
+
+        QQC2.CheckBox {
+            id: showPacePointer
+            text: i18n("Show even-pace pointer on bars")
         }
     }
 }

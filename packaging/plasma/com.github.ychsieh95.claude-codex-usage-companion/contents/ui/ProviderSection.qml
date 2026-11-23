@@ -18,6 +18,7 @@ Rectangle {
     required property bool showFiveHour
     required property bool showWeekly
     required property var colorForPercent
+    property bool showPacePointer: true
 
     implicitHeight: sectionContent.implicitHeight + Kirigami.Units.largeSpacing * 2
     radius: Kirigami.Units.cornerRadius
@@ -68,6 +69,7 @@ Rectangle {
             title: section.fiveHourTitle
             windowState: section.state ? section.state.fiveHour : null
             colorForPercent: section.colorForPercent
+            showPacePointer: section.showPacePointer
         }
 
         UsageWindow {
@@ -76,6 +78,7 @@ Rectangle {
             title: section.weeklyTitle
             windowState: section.state ? section.state.weekly : null
             colorForPercent: section.colorForPercent
+            showPacePointer: section.showPacePointer
         }
 
         PlasmaComponents3.Label {

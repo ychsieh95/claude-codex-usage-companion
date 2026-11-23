@@ -124,6 +124,7 @@ Item {
             showFiveHour: Plasmoid.configuration.showClaudeSession
             showWeekly: Plasmoid.configuration.showClaudeWeekly
             colorForPercent: controller.colorForPercent
+            showPacePointer: Plasmoid.configuration.showPacePointer
         }
 
         ProviderSection {
@@ -141,6 +142,7 @@ Item {
             showFiveHour: Plasmoid.configuration.showCodexFiveHour
             showWeekly: Plasmoid.configuration.showCodexWeekly
             colorForPercent: controller.colorForPercent
+            showPacePointer: Plasmoid.configuration.showPacePointer
         }
 
         Item {

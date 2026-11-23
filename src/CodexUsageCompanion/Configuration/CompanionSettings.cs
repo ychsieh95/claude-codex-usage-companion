@@ -8,6 +8,7 @@ public sealed record CompanionSettings
     public bool ShowClaudeWeekly { get; init; } = true;
     public bool ShowCodexFiveHour { get; init; }
     public bool ShowCodexWeekly { get; init; } = true;
+    public bool ShowPacePointer { get; init; } = true;
     [JsonPropertyName("showFiveHourLimit")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public bool? LegacyShowFiveHourLimit { get; init; }

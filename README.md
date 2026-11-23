@@ -21,6 +21,8 @@ This Linux version is based on [gkfriend/codex-usage-companion](https://github.c
 
 The panel uses provider headings and rounded bars based on [QuotaGem](https://github.com/gyozalab/QuotaGem). Each row shows the 5h/Weekly label, remaining percentage, and local reset time. The columns stay aligned. If you hide a provider, the panel fits its content and keeps its configured screen position. Move the pointer over a weekly bar to see credit details.
 
+Each bar has an even-pace pointer: small ticks on its top and bottom edges that mark where the bar would end if you spread usage evenly across the reset window. If the bar ends before the pointer, you are using that limit faster than an even pace. Move the pointer over the ticks to see how much of the window has passed. The expanded Plasma widget shows the same pointer on its bars. To hide it, clear **Show even-pace pointer on bars** under **Usage** in Settings, or under **Usage bars** in the widget configuration.
+
 Settings sections use this order: **Usage → Appearance → Window and startup → Notifications → Date and time → Logging → Updates**. Select a section title to expand or collapse it. **Expand all** and **Collapse all** control every section.
 
 The app saves section expansion states when Settings closes, including after **Cancel**. It restores these states when Settings opens again or the app restarts. **Cancel** discards form changes that you have not applied.
