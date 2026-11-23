@@ -1,6 +1,6 @@
 # Claude Codex Usage Companion for Linux
 
-[![CI](https://github.com/ychsieh95/claude-codex-usage-companion/actions/workflows/ci.yml/badge.svg)](https://github.com/ychsieh95/claude-codex-usage-companion/actions/workflows/ci.yml) [![Release](https://img.shields.io/github/v/release/ychsieh95/claude-codex-usage-companion)](https://github.com/ychsieh95/claude-codex-usage-companion/releases/latest) [![License: MIT](https://img.shields.io/github/license/ychsieh95/claude-codex-usage-companion)](LICENSE) ![.NET 10](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet) ![Platform: Linux](https://img.shields.io/badge/platform-Linux-FCC624?logo=linux&logoColor=black)
+[![CI](https://github.com/ychsieh95/claude-codex-usage-companion/actions/workflows/ci.yml/badge.svg)](https://github.com/ychsieh95/claude-codex-usage-companion/actions/workflows/ci.yml) [![Release](https://img.shields.io/github/v/release/ychsieh95/claude-codex-usage-companion)](https://github.com/ychsieh95/claude-codex-usage-companion/releases/latest) [![License: MIT](https://img.shields.io/github/license/ychsieh95/claude-codex-usage-companion)](LICENSE) ![.NET 10](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet) ![Platform: Linux](https://img.shields.io/badge/platform-Linux-FCC624?logo=linux&logoColor=black) [![Snap: classic](https://img.shields.io/badge/snap-classic-82BEA0?logo=snapcraft&logoColor=white)](#snap-package)
 
 [繁體中文（zh-tw）](README.zh-TW.md) · [简体中文（zh-cn）](README.zh-CN.md)
 
@@ -87,10 +87,16 @@ The **Yes/No** labels are centered horizontally and vertically in their buttons.
 
 ## Requirements
 
-- Kubuntu 26.04 or another modern x64/ARM64 Linux distribution.
+- Kubuntu 26.04 or another modern Linux distribution. Release packages are for x64. For ARM64, build from source. See [Build](#build).
 - A Wayland desktop or an X11 session.
 - Codex CLI installed, authenticated, and available as `codex` on `PATH`.
-- For the `.deb`: `libx11-6`, `libice6`, `libsm6`, `libfontconfig1`, `libharfbuzz0b`, `fonts-noto-cjk`, and `libnotify-bin`.
+- These host libraries: `libx11-6`, `libice6`, `libsm6`, `libfontconfig1`, `libharfbuzz0b`, `fonts-noto-cjk`, and `libnotify-bin`.
+
+The `.deb` installs the host libraries automatically. For the snap and the portable archive, install them with this command:
+
+```bash
+sudo apt install libx11-6 libice6 libsm6 libfontconfig1 libharfbuzz0b fonts-noto-cjk libnotify-bin
+```
 
 Release packages include the .NET runtime. You do not need a separate .NET runtime installation.
 
@@ -149,23 +155,125 @@ The app searches `~/.local/bin`, `~/.npm-global/bin`, and `~/.claude/local` for 
 - `CLAUDE_CREDENTIALS_PATH=/absolute/path/to/.credentials.json`
 - `CLAUDE_CLI_PATH=/absolute/path/to/claude`
 
-## Install the desktop and CLI
+## Install
 
-Build or download the `.deb` package. Install it with this command:
+Download the files from the [latest release](https://github.com/ychsieh95/claude-codex-usage-companion/releases/latest). Choose one package for the app. The Plasma widget package and the Codex plugin are optional.
+
+| Package | Root access | Menu entry | Plasma widget | Use it when |
+| --- | --- | --- | --- | --- |
+| [Debian package](#debian-package) (`.deb`) | Yes | Yes | Included | You use Debian, Ubuntu, or Kubuntu. |
+| [Snap package](#snap-package) (`.snap`) | Yes | Yes | Separate | Your distribution has snapd. |
+| [Portable archive](#portable-archive) (`.tar.gz`) | No | No | Separate | You do not want to install a system package. |
+| [Plasma widget package](#plasma-widget-package) (`.plasmoid`) | No | — | Widget only | You use the snap or the portable archive. |
+| [Codex plugin](#codex-plugin) (`.zip`) | No | No | No | You want Codex to start and refresh the app. |
+
+To verify the downloaded files, download `SHA256SUMS` to the same directory. Then run:
+
+```bash
+sha256sum --check --ignore-missing SHA256SUMS
+```
+
+Each downloaded file must show `OK`.
+
+### Debian package
+
+Install the package with this command:
 
 ```bash
 sudo apt install ./claude-codex-usage-companion_0.1.3_amd64.deb
 ```
 
-Launch **Claude Codex Usage Companion** from KDE's application menu, or run:
+The package installs these items:
+
+- The `claude-codex-usage-companion` command and the shorter `claude-codex-usage` alias.
+- A KDE/GNOME application menu entry at `/usr/share/applications/claude-codex-usage-companion.desktop`.
+- The icon under `/usr/share/icons/hicolor/scalable/apps/`.
+- The Plasma 6 widget.
+
+### Snap package
+
+Install the package with this command:
+
+```bash
+sudo snap install --classic --dangerous ./claude-codex-usage-companion_0.1.3_amd64.snap
+```
+
+The `--dangerous` flag is necessary because the file does not come from the Snap Store.
+
+The snap uses classic confinement. The app must read and renew Claude credentials in `~/.claude`. It must also read `~/.codex`, start the `codex` CLI, write the autostart entry, and call `notify-send`. Strict confinement blocks these actions.
+
+The snap installs the `claude-codex-usage-companion` command in `/snap/bin`. It also adds an application menu entry. To add the shorter `claude-codex-usage` alias, run:
+
+```bash
+sudo snap alias claude-codex-usage-companion claude-codex-usage
+```
+
+The snap includes the Plasma widget package, but does not install it. To install the widget, run:
+
+```bash
+kpackagetool6 --type Plasma/Applet --install /snap/claude-codex-usage-companion/current/usr/share/plasma/claude-codex-usage-companion-0.1.3.plasmoid
+```
+
+If you enable automatic startup, the autostart entry uses `/snap/bin/claude-codex-usage-companion`. This path stays the same after snap updates.
+
+### Portable archive
+
+Extract the archive. Copy the app to a directory on `PATH`:
+
+```bash
+tar -xzf claude-codex-usage-companion-0.1.3-linux-x64.tar.gz
+cd claude-codex-usage-companion-0.1.3-linux-x64
+install -D -m 755 claude-codex-usage-companion ~/.local/bin/claude-codex-usage-companion
+```
+
+Make sure that `PATH` includes `~/.local/bin`. The Plasma widget calls the app from `PATH`.
+
+The archive also contains the Plasma widget package, the READMEs, and the license. It does not add a menu entry or the `claude-codex-usage` alias.
+
+The autostart entry uses the path of the app file. If you move the file, disable and enable automatic startup again.
+
+### Plasma widget package
+
+Use this package with the snap or the portable archive. Do not use it with the `.deb`, because the `.deb` already includes the widget. Install the package without root access:
+
+```bash
+kpackagetool6 --type Plasma/Applet --install ./claude-codex-usage-companion-0.1.3.plasmoid
+```
+
+To update an installed widget, use `--upgrade` instead of `--install`. The widget requires the `claude-codex-usage-companion` command on `PATH`.
+
+### Codex plugin
+
+The Linux release build creates `CodexUsageCompanionMarketplace-v0.1.3-linux-x64.zip`. Extract this file. Add the extracted marketplace with this command:
+
+```bash
+codex plugin marketplace add /path/to/extracted-marketplace
+```
+
+Install the plugin from the added marketplace. Enable the plugin. When Codex asks, review the included `SessionStart` and `Stop` hooks. Trust the hooks to enable them. When the plugin starts the app, the app uses `PLUGIN_DATA` for settings.
+
+The plugin contains its own copy of the app. It does not add a menu entry, a command on `PATH`, or the Plasma widget.
+
+### Uninstall
+
+Disable automatic startup in Settings first. Then use the command for your package:
+
+```bash
+sudo apt remove claude-codex-usage-companion      # Debian package
+sudo snap remove claude-codex-usage-companion     # Snap package
+rm ~/.local/bin/claude-codex-usage-companion      # Portable archive
+kpackagetool6 --type Plasma/Applet --remove com.github.ychsieh95.claude-codex-usage-companion  # Plasma widget package
+```
+
+These commands keep your settings and logs. To remove them, delete `${XDG_CONFIG_HOME:-$HOME/.config}/claude-codex-usage-companion` and `${XDG_STATE_HOME:-$HOME/.local/state}/claude-codex-usage-companion`.
+
+## Start the app
+
+Launch **Claude Codex Usage Companion** from the application menu, or run:
 
 ```bash
 claude-codex-usage-companion gui
 ```
-
-The package also installs the shorter `claude-codex-usage` alias.
-
-The `.deb` creates a KDE/GNOME application menu entry at `/usr/share/applications/claude-codex-usage-companion.desktop`. It installs the icon under `/usr/share/icons/hicolor/scalable/apps/`.
 
 Automatic startup at login is disabled by default. If you enable it in Settings, the app creates `${XDG_CONFIG_HOME:-$HOME/.config}/autostart/claude-codex-usage-companion.desktop`.
 
@@ -185,7 +293,7 @@ The panel width adjusts to fit. Appearance changes appear immediately. Select **
 
 ## Plasma 6 widget
 
-The `.deb` also installs the **Claude Codex Usage** Plasma 6 widget. To add it:
+The `.deb` installs the **Claude Codex Usage** Plasma 6 widget. For the snap or the portable archive, install the [Plasma widget package](#plasma-widget-package). To add the widget:
 
 1. Right-click the Plasma desktop or panel.
 2. Select **Add Widgets**.
@@ -198,15 +306,11 @@ A wide widget arranges the indicators horizontally. A tall widget arranges them 
 
 The widget calls the app's local `status --json` command. The app handles credentials and network access.
 
-Release builds also include a standalone `.plasmoid` package. Install one without root access with:
-
-```bash
-kpackagetool6 --type Plasma/Applet --install ./claude-codex-usage-companion-0.1.3.plasmoid
-```
-
 For a development checkout, install or update the current source package with `bash scripts/install-plasma-widget.sh`. The companion CLI must remain installed and available on `PATH`.
 
 ## CLI
+
+The examples use the `claude-codex-usage` alias. If you do not have the alias, use `claude-codex-usage-companion`.
 
 Print current limits:
 
@@ -235,16 +339,6 @@ claude-codex-usage config
 `status`, `watch`, and their `--json` output show Claude before Codex. This matches the panel's card order. JSON results use this structure: `{"claude": {"state": ..., "error": ...}, "codex": {"state": ..., "error": ...}}`. If a provider is disabled, its key is absent. This replaces the previous flat JSON structure. Scripts that read the previous structure need changes.
 
 If Codex is not on `PATH`, set `CODEX_CLI_PATH=/absolute/path/to/codex`. To disable ANSI colors, set `NO_COLOR=1` or use `--no-color`.
-
-## Install as a Codex plugin
-
-The Linux release build creates `CodexUsageCompanionMarketplace-v0.1.3-linux-x64.zip`. Extract this file. Add the extracted marketplace with this command:
-
-```bash
-codex plugin marketplace add /path/to/extracted-marketplace
-```
-
-Install the plugin from the added marketplace. Enable the plugin. When Codex asks, review the included `SessionStart` and `Stop` hooks. Trust the hooks to enable them. When the plugin starts the app, the app uses `PLUGIN_DATA` for settings.
 
 ## Settings
 
@@ -412,6 +506,14 @@ The build runs the test suite. It writes these files under `artifacts/`:
 - A Plasma `.plasmoid` package.
 - A Codex marketplace `.zip` archive.
 - Checksums.
+
+To also build the `.snap` package, install snapcraft with `sudo snap install snapcraft --classic`. Then run:
+
+```bash
+bash scripts/build-snap.sh
+```
+
+The script runs `build-linux.sh` first. It writes `claude-codex-usage-companion_<version>_<arch>.snap` under `artifacts/` and adds it to `SHA256SUMS`. Set `SKIP_LINUX_BUILD=true` to use an existing build. Set `SNAPCRAFT_ARGS=--destructive-mode` to build on an Ubuntu 24.04 host without LXD.
 
 For a development run:
 

@@ -25,6 +25,8 @@ Application.Current.RequestedThemeVariant = ThemeVariant.Dark;
 
 // Fixed sample data: no account credentials or live provider requests.
 var updated = new DateTimeOffset(2026, 10, 12, 15, 29, 0, TimeSpan.FromHours(8));
+var claudeSessionReset = new DateTimeOffset(2026, 10, 12, 18, 0, 0, TimeSpan.FromHours(8)).ToUnixTimeSeconds();
+var codexFiveHourReset = new DateTimeOffset(2026, 10, 12, 19, 30, 0, TimeSpan.FromHours(8)).ToUnixTimeSeconds();
 var weeklyReset = new DateTimeOffset(2026, 10, 19, 1, 1, 0, TimeSpan.FromHours(8)).ToUnixTimeSeconds();
 foreach (var (language, filename) in new[]
 {
@@ -36,23 +38,18 @@ foreach (var (language, filename) in new[]
     var window = new UsageOverlayWindow(new CompanionSettings
     {
         Theme = UiThemeOptions.Dark,
-        ShowCodexFiveHour = false
+        ShowCodexFiveHour = true
     }, UiText.For(language));
     window.Width = 460;
-    window.UpdateUsage(UsageProvider.Claude, null);
+    window.UpdateUsage(UsageProvider.Claude, new RateLimitState(
+        new(72, 300, claudeSessionReset), new(64, 10080, weeklyReset), null));
     window.UpdateUsage(UsageProvider.Codex, new RateLimitState(
-        null, new(87, 10080, weeklyReset), null)
+        new(91, 300, codexFiveHourReset), new(87, 10080, weeklyReset), null)
     {
         CreditBalance = "0.00",
         AutomaticReloadEnabled = false
     });
-    var error = language switch
-    {
-        UiLanguage.TraditionalChinese => "Claude 工作階段已過期。請執行 'claude' 重新登入。",
-        UiLanguage.SimplifiedChinese => "Claude 会话已过期。请运行 'claude' 重新登录。",
-        _ => "Claude session expired. Run 'claude' to refresh your session."
-    };
-    window.SetStatus(null, error, UsageProvider.Claude);
+    window.SetStatus(updated, null, UsageProvider.Claude);
     window.SetStatus(updated, null, UsageProvider.Codex);
     window.Show();
     Dispatcher.UIThread.RunJobs();

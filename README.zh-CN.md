@@ -1,6 +1,6 @@
 # Claude Codex Usage Companion Linux 版
 
-[![CI](https://github.com/ychsieh95/claude-codex-usage-companion/actions/workflows/ci.yml/badge.svg)](https://github.com/ychsieh95/claude-codex-usage-companion/actions/workflows/ci.yml) [![Release](https://img.shields.io/github/v/release/ychsieh95/claude-codex-usage-companion)](https://github.com/ychsieh95/claude-codex-usage-companion/releases/latest) [![License: MIT](https://img.shields.io/github/license/ychsieh95/claude-codex-usage-companion)](LICENSE) ![.NET 10](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet) ![Platform: Linux](https://img.shields.io/badge/platform-Linux-FCC624?logo=linux&logoColor=black)
+[![CI](https://github.com/ychsieh95/claude-codex-usage-companion/actions/workflows/ci.yml/badge.svg)](https://github.com/ychsieh95/claude-codex-usage-companion/actions/workflows/ci.yml) [![Release](https://img.shields.io/github/v/release/ychsieh95/claude-codex-usage-companion)](https://github.com/ychsieh95/claude-codex-usage-companion/releases/latest) [![License: MIT](https://img.shields.io/github/license/ychsieh95/claude-codex-usage-companion)](LICENSE) ![.NET 10](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet) ![Platform: Linux](https://img.shields.io/badge/platform-Linux-FCC624?logo=linux&logoColor=black) [![Snap: classic](https://img.shields.io/badge/snap-classic-82BEA0?logo=snapcraft&logoColor=white)](#snap-软件包)
 
 [English](README.md) · [繁體中文（zh-tw）](README.zh-TW.md)
 
@@ -87,10 +87,16 @@ Claude Codex Usage Companion 是一款在 Linux 上运行的本地开源 Claude 
 
 ## 系统要求
 
-- Kubuntu 26.04 或其他现代 x64/ARM64 Linux 发行版。
+- Kubuntu 26.04 或其他现代 Linux 发行版。Release 软件包适用于 x64。ARM64 请从源码构建，请参阅[构建](#构建)。
 - Wayland 桌面环境或 X11 会话。
 - 已安装并完成身份验证的 Codex CLI，且可通过 `PATH` 中的 `codex` 运行。
-- `.deb` 软件包需要：`libx11-6`、`libice6`、`libsm6`、`libfontconfig1`、`libharfbuzz0b`、`fonts-noto-cjk` 和 `libnotify-bin`。
+- 以下主机库：`libx11-6`、`libice6`、`libsm6`、`libfontconfig1`、`libharfbuzz0b`、`fonts-noto-cjk` 和 `libnotify-bin`。
+
+`.deb` 会自动安装这些主机库。使用 snap 或便携式压缩包时，请使用以下命令安装：
+
+```bash
+sudo apt install libx11-6 libice6 libsm6 libfontconfig1 libharfbuzz0b fonts-noto-cjk libnotify-bin
+```
 
 Release 软件包为自包含软件包，无需另外安装 .NET runtime。
 
@@ -149,23 +155,125 @@ Access token 的有效期只有数小时。Claude CLI 只会在运行时更新�
 - `CLAUDE_CREDENTIALS_PATH=/absolute/path/to/.credentials.json`
 - `CLAUDE_CLI_PATH=/absolute/path/to/claude`
 
-## 安装桌面程序和 CLI
+## 安装
 
-构建或下载 `.deb`，然后运行：
+从[最新版本](https://github.com/ychsieh95/claude-codex-usage-companion/releases/latest)下载文件。选择一种软件包安装程序。Plasma 小组件包和 Codex plugin 为可选项。
+
+| 软件包 | 需要 root | 菜单项 | Plasma 小组件 | 适用情况 |
+| --- | --- | --- | --- | --- |
+| [Debian 软件包](#debian-软件包)（`.deb`） | 是 | 是 | 已包含 | 使用 Debian、Ubuntu 或 Kubuntu。 |
+| [Snap 软件包](#snap-软件包)（`.snap`） | 是 | 是 | 另行安装 | 发行版提供 snapd。 |
+| [便携式压缩包](#便携式压缩包)（`.tar.gz`） | 否 | 否 | 另行安装 | 不想安装系统软件包。 |
+| [Plasma 小组件包](#plasma-小组件包)（`.plasmoid`） | 否 | — | 仅小组件 | 使用 snap 或便携式压缩包。 |
+| [Codex plugin](#codex-plugin)（`.zip`） | 否 | 否 | 否 | 希望由 Codex 启动并刷新程序。 |
+
+若要验证下载的文件，请将 `SHA256SUMS` 下载到同一目录，然后运行：
+
+```bash
+sha256sum --check --ignore-missing SHA256SUMS
+```
+
+每个下载的文件都必须显示 `OK`。
+
+### Debian 软件包
+
+使用以下命令安装软件包：
 
 ```bash
 sudo apt install ./claude-codex-usage-companion_0.1.3_amd64.deb
 ```
 
-从 KDE 应用程序菜单启动 **Claude Codex Usage Companion**，或运行：
+软件包会安装以下项目：
+
+- `claude-codex-usage-companion` 命令和较短的 `claude-codex-usage` 别名。
+- 位于 `/usr/share/applications/claude-codex-usage-companion.desktop` 的 KDE/GNOME 应用程序菜单项。
+- 位于 `/usr/share/icons/hicolor/scalable/apps/` 的图标。
+- Plasma 6 小组件。
+
+### Snap 软件包
+
+使用以下命令安装软件包：
+
+```bash
+sudo snap install --classic --dangerous ./claude-codex-usage-companion_0.1.3_amd64.snap
+```
+
+由于文件并非来自 Snap Store，因此需要 `--dangerous` 标志。
+
+此 snap 使用 classic 隔离模式。程序必须读取并更新 `~/.claude` 中的 Claude 凭据，也必须读取 `~/.codex`、启动 `codex` CLI、写入自动启动项并调用 `notify-send`。strict 隔离模式会阻止这些操作。
+
+此 snap 会在 `/snap/bin` 安装 `claude-codex-usage-companion` 命令，并添加应用程序菜单项。若要添加较短的 `claude-codex-usage` 别名，请运行：
+
+```bash
+sudo snap alias claude-codex-usage-companion claude-codex-usage
+```
+
+此 snap 包含 Plasma 小组件包，但不会自动安装。若要安装小组件，请运行：
+
+```bash
+kpackagetool6 --type Plasma/Applet --install /snap/claude-codex-usage-companion/current/usr/share/plasma/claude-codex-usage-companion-0.1.3.plasmoid
+```
+
+若启用登录时自动启动，自动启动项会使用 `/snap/bin/claude-codex-usage-companion`。此路径在 snap 更新后保持不变。
+
+### 便携式压缩包
+
+解压压缩包，并将程序复制到 `PATH` 中的目录：
+
+```bash
+tar -xzf claude-codex-usage-companion-0.1.3-linux-x64.tar.gz
+cd claude-codex-usage-companion-0.1.3-linux-x64
+install -D -m 755 claude-codex-usage-companion ~/.local/bin/claude-codex-usage-companion
+```
+
+请确认 `PATH` 包含 `~/.local/bin`。Plasma 小组件会从 `PATH` 调用程序。
+
+压缩包还包含 Plasma 小组件包、README 和许可证。它不会添加菜单项或 `claude-codex-usage` 别名。
+
+自动启动项会使用程序文件的路径。若移动文件，请禁用后再重新启用登录时自动启动。
+
+### Plasma 小组件包
+
+此软件包适用于 snap 或便携式压缩包。`.deb` 已包含小组件，请勿与 `.deb` 一起使用。可无需 root 权限安装：
+
+```bash
+kpackagetool6 --type Plasma/Applet --install ./claude-codex-usage-companion-0.1.3.plasmoid
+```
+
+若要更新已安装的小组件，请用 `--upgrade` 替换 `--install`。小组件需要可从 `PATH` 运行 `claude-codex-usage-companion` 命令。
+
+### Codex plugin
+
+Linux release 构建会生成 `CodexUsageCompanionMarketplace-v0.1.3-linux-x64.zip`。请解压此文件。使用以下命令添加解压后的 marketplace：
+
+```bash
+codex plugin marketplace add /path/to/extracted-marketplace
+```
+
+从已添加的 marketplace 安装并启用 plugin。Codex 询问时，请检查随附的 `SessionStart` 和 `Stop` hooks。信任 hooks 后才能启用。Plugin 启动程序时，程序会使用 `PLUGIN_DATA` 保存设置。
+
+Plugin 包含自己的程序副本。它不会添加菜单项、`PATH` 中的命令或 Plasma 小组件。
+
+### 卸载
+
+请先在设置中禁用登录时自动启动，再按软件包运行对应命令：
+
+```bash
+sudo apt remove claude-codex-usage-companion      # Debian 软件包
+sudo snap remove claude-codex-usage-companion     # Snap 软件包
+rm ~/.local/bin/claude-codex-usage-companion      # 便携式压缩包
+kpackagetool6 --type Plasma/Applet --remove com.github.ychsieh95.claude-codex-usage-companion  # Plasma 小组件包
+```
+
+这些命令会保留设置和日志。若要删除，请删除 `${XDG_CONFIG_HOME:-$HOME/.config}/claude-codex-usage-companion` 和 `${XDG_STATE_HOME:-$HOME/.local/state}/claude-codex-usage-companion`。
+
+## 启动程序
+
+从应用程序菜单启动 **Claude Codex Usage Companion**，或运行：
 
 ```bash
 claude-codex-usage-companion gui
 ```
-
-软件包还会安装较短的 `claude-codex-usage` 别名。
-
-`.deb` 会在 `/usr/share/applications/claude-codex-usage-companion.desktop` 创建 KDE/GNOME 应用程序菜单项。图标会安装至 `/usr/share/icons/hicolor/scalable/apps/`。
 
 登录时自动启动默认禁用。在设置中启用后，程序会创建 `${XDG_CONFIG_HOME:-$HOME/.config}/autostart/claude-codex-usage-companion.desktop`。
 
@@ -185,7 +293,7 @@ claude-codex-usage-companion gui
 
 ## Plasma 6 小组件
 
-`.deb` 也会安装 **Claude Codex Usage** Plasma 6 小组件。添加方式如下：
+`.deb` 会安装 **Claude Codex Usage** Plasma 6 小组件。使用 snap 或便携式压缩包时，请安装 [Plasma 小组件包](#plasma-小组件包)。添加方式如下：
 
 1. 右键点击 Plasma 桌面或面板。
 2. 选择**添加小组件**。
@@ -198,15 +306,11 @@ claude-codex-usage-companion gui
 
 小组件会调用程序的本地 `status --json` 命令。凭据和网络访问由程序处理。
 
-Release 构建也会包含独立的 `.plasmoid` 软件包，可无需 root 权限安装：
-
-```bash
-kpackagetool6 --type Plasma/Applet --install ./claude-codex-usage-companion-0.1.3.plasmoid
-```
-
 使用开发 checkout 时，可运行 `bash scripts/install-plasma-widget.sh` 安装或更新当前源码包。Companion CLI 必须保持安装并可从 `PATH` 运行。
 
 ## CLI
+
+示例使用 `claude-codex-usage` 别名。若没有此别名，请改用 `claude-codex-usage-companion`。
 
 输出当前限额：
 
@@ -235,16 +339,6 @@ claude-codex-usage config
 `status`、`watch` 及其 `--json` 输出会先显示 Claude，再显示 Codex，与面板卡片顺序一致。JSON 结果使用此结构：`{"claude": {"state": ..., "error": ...}, "codex": {"state": ..., "error": ...}}`。禁用提供方时，对应键会省略。这会取代先前的扁平 JSON 结构。读取旧结构的脚本需要调整。
 
 如果 Codex 不在 `PATH` 中，请设置 `CODEX_CLI_PATH=/absolute/path/to/codex`。如需禁用 ANSI 颜色，请设置 `NO_COLOR=1` 或传入 `--no-color`。
-
-## 安装为 Codex plugin
-
-Linux release 构建会生成 `CodexUsageCompanionMarketplace-v0.1.3-linux-x64.zip`。请解压此文件。使用以下命令添加解压后的 marketplace：
-
-```bash
-codex plugin marketplace add /path/to/extracted-marketplace
-```
-
-从已添加的 marketplace 安装并启用 plugin。Codex 询问时，请检查随附的 `SessionStart` 和 `Stop` hooks。信任 hooks 后才能启用。Plugin 启动程序时，程序会使用 `PLUGIN_DATA` 保存设置。
 
 ## 设置
 
@@ -412,6 +506,14 @@ bash scripts/build-linux.sh linux-arm64
 - Plasma `.plasmoid` 软件包。
 - Codex marketplace `.zip` 压缩包。
 - 校验码。
+
+若也要构建 `.snap` 软件包，请用 `sudo snap install snapcraft --classic` 安装 snapcraft，然后运行：
+
+```bash
+bash scripts/build-snap.sh
+```
+
+此脚本会先运行 `build-linux.sh`，再在 `artifacts/` 下写入 `claude-codex-usage-companion_<version>_<arch>.snap`，并将其加入 `SHA256SUMS`。设置 `SKIP_LINUX_BUILD=true` 可使用已有的构建。设置 `SNAPCRAFT_ARGS=--destructive-mode` 可在没有 LXD 的 Ubuntu 24.04 主机上构建。
 
 开发环境运行方式：
 

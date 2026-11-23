@@ -4,6 +4,23 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- A classic-confinement `.snap` package (`snap/snapcraft.yaml`, `scripts/build-snap.sh`) that includes the self-contained app, an application menu entry, and the Plasma `.plasmoid` package. Release builds attach the amd64 snap and add it to `SHA256SUMS`.
+- A snap badge and snap build instructions in the English, Traditional Chinese, and Simplified Chinese READMEs.
+
+### Changed
+
+- Restructured the README installation guide into one Install section with a package comparison table, separate Debian, snap, portable archive, Plasma widget, and Codex plugin instructions, and uninstall steps. Launch and Settings basics moved to a new Start the app section.
+- Refreshed the overlay screenshots with sample data that shows Claude and Codex 5h and weekly usage, instead of an expired Claude session.
+
+### Fixed
+
+- `SHA256SUMS` now lists bare file names instead of absolute build paths, so `sha256sum --check --ignore-missing SHA256SUMS` works next to downloaded release files. The READMEs describe this check.
+- Automatic startup inside a snap now writes the stable `/snap/bin/claude-codex-usage-companion` launcher instead of a revision-specific path that breaks after snap updates.
+
 ## [0.1.3] - 2026-10-12
 
 ### Added
