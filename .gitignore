@@ -15,6 +15,10 @@
 *.deb
 *.nupkg
 *.snupkg
+*.snap
+/parts/
+/prime/
+/stage/
 *.tar
 *.tar.gz
 *.zip

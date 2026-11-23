@@ -10,7 +10,8 @@ permissions:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    # The snap uses base core24, so destructive-mode builds need Ubuntu 24.04.
+    runs-on: ubuntu-24.04
 
     steps:
       - uses: actions/checkout@v4
@@ -27,6 +28,15 @@ jobs:
       - name: Build release artifacts
         run: bash scripts/build-linux.sh
 
+      - name: Install snapcraft
+        run: sudo snap install snapcraft --classic
+
+      - name: Build snap package
+        env:
+          SKIP_LINUX_BUILD: "true"
+          SNAPCRAFT_ARGS: --destructive-mode
+        run: bash scripts/build-snap.sh
+
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -34,6 +44,7 @@ jobs:
         run: |
           assets=(
             artifacts/*.deb
+            artifacts/*.snap
             artifacts/*.tar.gz
             artifacts/*.zip
             artifacts/SHA256SUMS

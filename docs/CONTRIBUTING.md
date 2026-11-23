@@ -18,8 +18,14 @@ dotnet test CodexUsageCompanion.slnx --configuration Release -p:TreatWarningsAsE
 dotnet list src/CodexUsageCompanion/CodexUsageCompanion.csproj package --vulnerable --include-transitive
 dotnet list tests/CodexUsageCompanion.Tests/CodexUsageCompanion.Tests.csproj package --vulnerable --include-transitive
 desktop-file-validate packaging/linux/claude-codex-usage-companion.desktop
+# snapd expands ${SNAP} at install time; substitute it before validating.
+sed 's|${SNAP}|/snap/claude-codex-usage-companion/current|' \
+  packaging/snap/claude-codex-usage-companion.desktop > /tmp/snap-entry.desktop
+desktop-file-validate /tmp/snap-entry.desktop
 bash scripts/build-linux.sh
 ```
+
+If you change `snap/snapcraft.yaml`, `packaging/snap/`, or `scripts/build-snap.sh`, also run `bash scripts/build-snap.sh`. It needs snapcraft and LXD, or an Ubuntu 24.04 host with `SNAPCRAFT_ARGS=--destructive-mode`.
 
 Keep changes focused, add regression tests for behavior changes, and do not commit generated output, logs, user settings, credentials, or local paths. For GUI lifecycle changes, manually verify minimize, settings save, tray enable/disable, hide-to-tray, tray restore, tray tooltip, tray quit, autostart enable/disable, language switching, nine-position preview/save/cancel behavior, usage logging enable/disable plus TXT/CSV/JSONL output and custom paths, and always-on-top behavior. Keep `README.md`, `README.zh-TW.md`, and `README.zh-CN.md` structurally equivalent whenever documentation changes.
 

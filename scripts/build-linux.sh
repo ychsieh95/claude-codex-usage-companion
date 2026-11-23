@@ -41,6 +41,7 @@ fi
 info "Cleaning previous artifacts."
 rm -rf "$ARTIFACTS"
 mkdir -p "$PUBLISH"
+echo "$VERSION" > "$ARTIFACTS/VERSION"
 ok "Artifact directory prepared."
 
 info "Restoring .NET dependencies."
@@ -174,10 +175,14 @@ PLUGIN_ZIP="$ARTIFACTS/CodexUsageCompanionMarketplace-v$VERSION-$RID.zip"
 ok "Marketplace archive created: $PLUGIN_ZIP"
 
 info "Generating SHA-256 checksums."
-sha256sum "$DEB" \
-  "$ARTIFACTS/claude-codex-usage-companion-$VERSION-$RID.tar.gz" \
-  "$PLASMOID" \
-  "$PLUGIN_ZIP" > "$ARTIFACTS/SHA256SUMS"
+# Use bare file names so `sha256sum --check` works next to downloaded files.
+(
+  cd "$ARTIFACTS"
+  sha256sum "$(basename "$DEB")" \
+    "claude-codex-usage-companion-$VERSION-$RID.tar.gz" \
+    "$(basename "$PLASMOID")" \
+    "$(basename "$PLUGIN_ZIP")" > SHA256SUMS
+)
 ok "Checksums generated."
 
 echo "$DEB"

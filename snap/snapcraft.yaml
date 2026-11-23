@@ -1,0 +1,58 @@
+name: claude-codex-usage-companion
+title: Claude Codex Usage Companion
+summary: Claude and Codex rate-limit usage companion for Linux
+description: |
+  A local, open-source usage monitor for Claude Code and Codex. It includes a
+  compact Avalonia desktop panel, a scriptable CLI with JSON output, and a
+  Plasma 6 widget package. It has no telemetry.
+
+  The snap uses classic confinement. The app must read and renew Claude
+  credentials in ~/.claude, read Codex state in ~/.codex, start the host
+  `codex` CLI, write a login autostart entry, and call `notify-send`.
+website: https://github.com/ychsieh95/claude-codex-usage-companion
+source-code: https://github.com/ychsieh95/claude-codex-usage-companion
+issues: https://github.com/ychsieh95/claude-codex-usage-companion/issues
+contact: https://github.com/ychsieh95/claude-codex-usage-companion/issues
+license: MIT
+icon: packaging/linux/claude-codex-usage-companion.svg
+adopt-info: companion
+base: core24
+grade: stable
+confinement: classic
+
+platforms:
+  amd64:
+    build-on: [amd64, arm64]
+    build-for: [amd64]
+  arm64:
+    build-on: [amd64, arm64]
+    build-for: [arm64]
+
+lint:
+  ignore:
+    # Patching the ELF interpreter or rpath corrupts the .NET single-file
+    # bundle, so the binary intentionally uses the host loader.
+    - classic:
+        - bin/CodexUsageCompanion
+
+apps:
+  claude-codex-usage-companion:
+    command: bin/CodexUsageCompanion
+    desktop: usr/share/applications/claude-codex-usage-companion.desktop
+    environment:
+      AVALONIA_X11_USE_SESSION_MANAGEMENT: "0"
+
+parts:
+  companion:
+    # scripts/build-snap.sh stages the tested, self-contained single-file
+    # build here. The binary is not patched with patchelf, so it uses the
+    # host loader and the host X11, fontconfig, and HarfBuzz libraries.
+    plugin: dump
+    source: artifacts/snap-root
+    override-build: |
+      craftctl default
+      craftctl set version="$(cat "$CRAFT_PART_SRC/VERSION")"
+    prime:
+      - bin/CodexUsageCompanion
+      - usr/share/applications/claude-codex-usage-companion.desktop
+      - usr/share/plasma/*.plasmoid
