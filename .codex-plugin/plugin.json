@@ -1,6 +1,6 @@
 {
   "name": "claude-codex-usage-companion",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Displays Claude and Codex rate-limit usage in a Linux desktop companion and terminal CLI.",
   "author": {
     "name": "ychsieh95",

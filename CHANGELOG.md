@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-11-23
+
 ### Added
 
 - An even-pace pointer on each usage bar in the overlay and the expanded Plasma widget. It marks where the remaining-usage bar would end if usage were spread evenly across the reset window, so a bar that ends before it shows the limit is being used faster than an even pace. Its tooltip shows how much of the window has passed, and it moves every minute. It is on by default. **Show even-pace pointer on bars** in Settings and in the widget configuration turns it off.
@@ -151,6 +153,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - No telemetry. This app never stores or writes authentication tokens of its own; when Claude usage is enabled, it reads the OAuth access token Claude Code already stores locally and sends it only to Anthropic's official API over HTTPS.
 
+[0.1.5]: https://github.com/ychsieh95/claude-codex-usage-companion/releases/tag/v0.1.5
 [0.1.4]: https://github.com/ychsieh95/claude-codex-usage-companion/releases/tag/v0.1.4
 [0.1.3]: https://github.com/ychsieh95/claude-codex-usage-companion/releases/tag/v0.1.3
 [0.1.2]: https://github.com/ychsieh95/claude-codex-usage-companion/releases/tag/v0.1.2

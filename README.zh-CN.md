@@ -182,7 +182,7 @@ sha256sum --check --ignore-missing SHA256SUMS
 使用以下命令安装软件包：
 
 ```bash
-sudo apt install ./claude-codex-usage-companion_0.1.4_amd64.deb
+sudo apt install ./claude-codex-usage-companion_0.1.5_amd64.deb
 ```
 
 软件包会安装以下项目：
@@ -197,7 +197,7 @@ sudo apt install ./claude-codex-usage-companion_0.1.4_amd64.deb
 使用以下命令安装软件包：
 
 ```bash
-sudo snap install --classic --dangerous ./claude-codex-usage-companion_0.1.4_amd64.snap
+sudo snap install --classic --dangerous ./claude-codex-usage-companion_0.1.5_amd64.snap
 ```
 
 由于文件并非来自 Snap Store，因此需要 `--dangerous` 标志。
@@ -213,7 +213,7 @@ sudo snap alias claude-codex-usage-companion claude-codex-usage
 此 snap 包含 Plasma 小组件包，但不会自动安装。若要安装小组件，请运行：
 
 ```bash
-kpackagetool6 --type Plasma/Applet --install /snap/claude-codex-usage-companion/current/usr/share/plasma/claude-codex-usage-companion-0.1.4.plasmoid
+kpackagetool6 --type Plasma/Applet --install /snap/claude-codex-usage-companion/current/usr/share/plasma/claude-codex-usage-companion-0.1.5.plasmoid
 ```
 
 若启用登录时自动启动，自动启动项会使用 `/snap/bin/claude-codex-usage-companion`。此路径在 snap 更新后保持不变。
@@ -223,8 +223,8 @@ kpackagetool6 --type Plasma/Applet --install /snap/claude-codex-usage-companion/
 解压压缩包，并将程序复制到 `PATH` 中的目录：
 
 ```bash
-tar -xzf claude-codex-usage-companion-0.1.4-linux-x64.tar.gz
-cd claude-codex-usage-companion-0.1.4-linux-x64
+tar -xzf claude-codex-usage-companion-0.1.5-linux-x64.tar.gz
+cd claude-codex-usage-companion-0.1.5-linux-x64
 install -D -m 755 claude-codex-usage-companion ~/.local/bin/claude-codex-usage-companion
 ```
 
@@ -239,14 +239,14 @@ install -D -m 755 claude-codex-usage-companion ~/.local/bin/claude-codex-usage-c
 此软件包适用于 snap 或便携式压缩包。`.deb` 已包含小组件，请勿与 `.deb` 一起使用。可无需 root 权限安装：
 
 ```bash
-kpackagetool6 --type Plasma/Applet --install ./claude-codex-usage-companion-0.1.4.plasmoid
+kpackagetool6 --type Plasma/Applet --install ./claude-codex-usage-companion-0.1.5.plasmoid
 ```
 
 若要更新已安装的小组件，请用 `--upgrade` 替换 `--install`。小组件需要可从 `PATH` 运行 `claude-codex-usage-companion` 命令。
 
 ### Codex plugin
 
-Linux release 构建会生成 `CodexUsageCompanionMarketplace-v0.1.4-linux-x64.zip`。请解压此文件。使用以下命令添加解压后的 marketplace：
+Linux release 构建会生成 `CodexUsageCompanionMarketplace-v0.1.5-linux-x64.zip`。请解压此文件。使用以下命令添加解压后的 marketplace：
 
 ```bash
 codex plugin marketplace add /path/to/extracted-marketplace
