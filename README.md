@@ -180,7 +180,7 @@ Each downloaded file must show `OK`.
 Install the package with this command:
 
 ```bash
-sudo apt install ./claude-codex-usage-companion_0.1.3_amd64.deb
+sudo apt install ./claude-codex-usage-companion_0.1.4_amd64.deb
 ```
 
 The package installs these items:
@@ -195,7 +195,7 @@ The package installs these items:
 Install the package with this command:
 
 ```bash
-sudo snap install --classic --dangerous ./claude-codex-usage-companion_0.1.3_amd64.snap
+sudo snap install --classic --dangerous ./claude-codex-usage-companion_0.1.4_amd64.snap
 ```
 
 The `--dangerous` flag is necessary because the file does not come from the Snap Store.
@@ -211,7 +211,7 @@ sudo snap alias claude-codex-usage-companion claude-codex-usage
 The snap includes the Plasma widget package, but does not install it. To install the widget, run:
 
 ```bash
-kpackagetool6 --type Plasma/Applet --install /snap/claude-codex-usage-companion/current/usr/share/plasma/claude-codex-usage-companion-0.1.3.plasmoid
+kpackagetool6 --type Plasma/Applet --install /snap/claude-codex-usage-companion/current/usr/share/plasma/claude-codex-usage-companion-0.1.4.plasmoid
 ```
 
 If you enable automatic startup, the autostart entry uses `/snap/bin/claude-codex-usage-companion`. This path stays the same after snap updates.
@@ -221,8 +221,8 @@ If you enable automatic startup, the autostart entry uses `/snap/bin/claude-code
 Extract the archive. Copy the app to a directory on `PATH`:
 
 ```bash
-tar -xzf claude-codex-usage-companion-0.1.3-linux-x64.tar.gz
-cd claude-codex-usage-companion-0.1.3-linux-x64
+tar -xzf claude-codex-usage-companion-0.1.4-linux-x64.tar.gz
+cd claude-codex-usage-companion-0.1.4-linux-x64
 install -D -m 755 claude-codex-usage-companion ~/.local/bin/claude-codex-usage-companion
 ```
 
@@ -237,14 +237,14 @@ The autostart entry uses the path of the app file. If you move the file, disable
 Use this package with the snap or the portable archive. Do not use it with the `.deb`, because the `.deb` already includes the widget. Install the package without root access:
 
 ```bash
-kpackagetool6 --type Plasma/Applet --install ./claude-codex-usage-companion-0.1.3.plasmoid
+kpackagetool6 --type Plasma/Applet --install ./claude-codex-usage-companion-0.1.4.plasmoid
 ```
 
 To update an installed widget, use `--upgrade` instead of `--install`. The widget requires the `claude-codex-usage-companion` command on `PATH`.
 
 ### Codex plugin
 
-The Linux release build creates `CodexUsageCompanionMarketplace-v0.1.3-linux-x64.zip`. Extract this file. Add the extracted marketplace with this command:
+The Linux release build creates `CodexUsageCompanionMarketplace-v0.1.4-linux-x64.zip`. Extract this file. Add the extracted marketplace with this command:
 
 ```bash
 codex plugin marketplace add /path/to/extracted-marketplace

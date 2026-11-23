@@ -4,7 +4,7 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.4] - 2026-11-23
 
 ### Added
 
@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Fixed
 
 - `SHA256SUMS` now lists bare file names instead of absolute build paths, so `sha256sum --check --ignore-missing SHA256SUMS` works next to downloaded release files. The READMEs describe this check.
+- `scripts/git-release.sh` verifies `SHA256SUMS` from inside `artifacts/`, and the Codex plugin manifest version now matches the app version.
 - Automatic startup inside a snap now writes the stable `/snap/bin/claude-codex-usage-companion` launcher instead of a revision-specific path that breaks after snap updates.
 
 ## [0.1.3] - 2026-10-12
@@ -140,6 +141,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - No telemetry. This app never stores or writes authentication tokens of its own; when Claude usage is enabled, it reads the OAuth access token Claude Code already stores locally and sends it only to Anthropic's official API over HTTPS.
 
+[0.1.4]: https://github.com/ychsieh95/claude-codex-usage-companion/releases/tag/v0.1.4
 [0.1.3]: https://github.com/ychsieh95/claude-codex-usage-companion/releases/tag/v0.1.3
 [0.1.2]: https://github.com/ychsieh95/claude-codex-usage-companion/releases/tag/v0.1.2
 [0.1.1]: https://github.com/ychsieh95/claude-codex-usage-companion/releases/tag/v0.1.1

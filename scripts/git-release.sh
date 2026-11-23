@@ -5,7 +5,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT/scripts/lib/log-block.sh"
 cd "$ROOT"
 
-VERSION="v0.1.3"
+VERSION="v0.1.4"
 
 info "Preparing Git release $VERSION."
 
@@ -26,7 +26,7 @@ if git show-ref --verify --quiet "refs/tags/$VERSION"; then
 fi
 
 bash "$ROOT/scripts/build-linux.sh"
-sha256sum -c "$ROOT/artifacts/SHA256SUMS"
+(cd "$ROOT/artifacts" && sha256sum -c SHA256SUMS)
 
 git tag -a "$VERSION" -m "Claude Codex Usage Companion $VERSION" -m "$NOTES"
 git push origin "refs/tags/$VERSION:refs/tags/$VERSION"
