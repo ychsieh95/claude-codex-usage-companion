@@ -23,9 +23,9 @@
 | **舊版（v0.1.5）** | v0.1.5 面板，使用帶標籤的 36 像素進度條。可設定欄位間距，並拖曳各卡片以調整高度。 |
 | **圓環** | 每個供應商以一組圓環顯示。外環為目前或 5 小時限制，顏色較淡的內環為每週限制。面板較窄，且不顯示徽章。 |
 
-| 最新（進度條） | 最新（圓環） | 舊版 |
+| 最新 | 舊版（v0.1.5） | 圓環 |
 | --- | --- | --- |
-| ![最新設計，進度條](../assets/screenshots/overlay-zh-tw.png) | ![最新設計，圓環](../assets/screenshots/overlay-rings-zh-tw.png) | ![舊版設計](../assets/screenshots/overlay-previous-zh-tw.png) |
+| ![最新設計](../assets/screenshots/overlay-zh-tw.png) | ![舊版設計](../assets/screenshots/overlay-previous-zh-tw.png) | ![圓環設計](../assets/screenshots/overlay-rings-zh-tw.png) |
 
 在最新設計中，**限制列**會將每項限制的名稱與重置時間放在同一列，讓面板更矮。
 

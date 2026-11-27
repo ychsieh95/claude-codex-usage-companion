@@ -23,9 +23,9 @@ Select a design under **Settings → Appearance → Design**.
 | **Previous** | The v0.1.5 panel, with labelled 36-pixel bars. You can set the column gaps and drag each card to change its height. |
 | **Rings** | One circular ring for each provider. The outer ring is the current or 5-hour limit. The inner, lighter ring is the weekly limit. The panel is narrower and has no badge. |
 
-| Latest (bar) | Latest (ring) | Legacy |
+| Latest | Previous (v0.1.5) | Rings |
 | --- | --- | --- |
-| ![Latest design with bars](../assets/screenshots/overlay-en.png) | ![Latest design with rings](../assets/screenshots/overlay-rings-en.png) | ![Legacy design](../assets/screenshots/overlay-previous-en.png) |
+| ![Latest design](../assets/screenshots/overlay-en.png) | ![Previous design](../assets/screenshots/overlay-previous-en.png) | ![Rings design](../assets/screenshots/overlay-rings-en.png) |
 
 In the latest design, **Limit rows** puts each limit's name and reset time on one row. This makes the panel shorter.
 

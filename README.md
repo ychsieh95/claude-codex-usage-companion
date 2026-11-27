@@ -20,9 +20,9 @@ Claude Codex Usage Companion shows your Claude Code and Codex usage limits on th
 
 This Linux version is based on [gkfriend/codex-usage-companion](https://github.com/gkfriend/codex-usage-companion), a Windows/WPF application.
 
-| Latest (bar) | Latest (ring) | Legacy |
+| Latest | Previous (v0.1.5) | Rings |
 | --- | --- | --- |
-| ![Latest design with bars](assets/screenshots/overlay-en.png) | ![Latest design with rings](assets/screenshots/overlay-rings-en.png) | ![Legacy design](assets/screenshots/overlay-previous-en.png) |
+| ![Latest design](assets/screenshots/overlay-en.png) | ![Previous design](assets/screenshots/overlay-previous-en.png) | ![Rings design](assets/screenshots/overlay-rings-en.png) |
 
 ### Functions
 

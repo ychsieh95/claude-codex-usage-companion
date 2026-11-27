@@ -20,9 +20,9 @@ Claude Codex Usage Companion 在 Linux 桌面显示 Claude Code 和 Codex 的用
 
 此 Linux 版本基于 Windows/WPF 应用 [gkfriend/codex-usage-companion](https://github.com/gkfriend/codex-usage-companion)。
 
-| 最新（进度条） | 最新（圆环） | 旧版 |
+| 最新 | 旧版（v0.1.5） | 圆环 |
 | --- | --- | --- |
-| ![最新设计，进度条](assets/screenshots/overlay-zh-cn.png) | ![最新设计，圆环](assets/screenshots/overlay-rings-zh-cn.png) | ![旧版设计](assets/screenshots/overlay-previous-zh-cn.png) |
+| ![最新设计](assets/screenshots/overlay-zh-cn.png) | ![旧版设计](assets/screenshots/overlay-previous-zh-cn.png) | ![圆环设计](assets/screenshots/overlay-rings-zh-cn.png) |
 
 ### 功能
 

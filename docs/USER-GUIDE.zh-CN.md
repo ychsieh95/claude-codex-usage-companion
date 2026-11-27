@@ -23,9 +23,9 @@
 | **旧版（v0.1.5）** | v0.1.5 面板，使用带标签的 36 像素进度条。可设置列间距，并拖动各卡片调整高度。 |
 | **圆环** | 每个提供方以一组圆环显示。外环为当前或 5 小时限制，颜色较浅的内环为每周限制。面板较窄，且不显示徽章。 |
 
-| 最新（进度条） | 最新（圆环） | 旧版 |
+| 最新 | 旧版（v0.1.5） | 圆环 |
 | --- | --- | --- |
-| ![最新设计，进度条](../assets/screenshots/overlay-zh-cn.png) | ![最新设计，圆环](../assets/screenshots/overlay-rings-zh-cn.png) | ![旧版设计](../assets/screenshots/overlay-previous-zh-cn.png) |
+| ![最新设计](../assets/screenshots/overlay-zh-cn.png) | ![旧版设计](../assets/screenshots/overlay-previous-zh-cn.png) | ![圆环设计](../assets/screenshots/overlay-rings-zh-cn.png) |
 
 在最新设计中，**限制行**会将每项限制的名称和重置时间放在同一行，让面板更矮。
 
