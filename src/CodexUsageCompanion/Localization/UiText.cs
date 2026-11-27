@@ -1,5 +1,6 @@
 using System.Globalization;
 using CodexUsageCompanion.Configuration;
+using CodexUsageCompanion.Lifecycle;
 using CodexUsageCompanion.RateLimits;
 
 namespace CodexUsageCompanion.Localization;
@@ -56,6 +57,50 @@ public sealed record UiText(
     public string UpdateCheckFailed => UpdateText("Unable to check for updates. Please try again later.", "無法檢查更新，請稍後再試。", "无法检查更新，请稍后重试。");
     public string OpenReleaseAction => UpdateText("Open release page", "開啟版本頁面", "打开版本页面");
     public string FormatAppUpdate(string version) => UpdateText($"Version {version} is available.", $"有新版本 {version} 可用。", $"有新版本 {version} 可用。");
+    public string AutoInstallUpdatesOption => UpdateText("Automatically download and install updates", "自動下載並安裝更新", "自动下载并安装更新");
+    public string InstallUpdateAction => UpdateText("Install update", "安裝更新", "安装更新");
+    public string InstallNowAction => UpdateText("Install now", "立即安裝", "立即安装");
+    public string DownloadingUpdate => UpdateText("Downloading and verifying the update…", "正在下載並驗證更新…", "正在下载并验证更新…");
+    public string InstallingUpdate => UpdateText("Installing the update…", "正在安裝更新…", "正在安装更新…");
+    public string UpdateInstallFailed => UpdateText(
+        "Unable to install the update. Open the release page to update manually.",
+        "無法安裝更新。請開啟版本頁面手動更新。",
+        "无法安装更新。请打开版本页面手动更新。");
+    public string UpdateInstallCancelled => UpdateText(
+        "The update was not installed because the administrator password prompt was closed.",
+        "已關閉管理員密碼提示，因此未安裝更新。",
+        "已关闭管理员密码提示，因此未安装更新。");
+    public string FormatUpdateInstalled(string version) => UpdateText(
+        $"Version {version} is installed. The app is restarting.",
+        $"已安裝版本 {version}。應用程式正在重新啟動。",
+        $"已安装版本 {version}。应用正在重新启动。");
+    public string FormatUpdateReadyToInstall(string version) => UpdateText(
+        $"Version {version} is downloaded and verified. Install it now?",
+        $"版本 {version} 已下載並驗證。要立即安裝嗎？",
+        $"版本 {version} 已下载并验证。要立即安装吗？");
+    public string InstallKindHint(InstallKind kind) => kind switch
+    {
+        InstallKind.Portable => UpdateText(
+            "Updates replace this app's file and restart the app.",
+            "更新會取代此應用程式的檔案並重新啟動應用程式。",
+            "更新会替换此应用的文件并重新启动应用。"),
+        InstallKind.Debian => UpdateText(
+            "Updates download automatically. Installing asks for your administrator password.",
+            "更新會自動下載。安裝時會要求輸入管理員密碼。",
+            "更新会自动下载。安装时会要求输入管理员密码。"),
+        InstallKind.Snap => UpdateText(
+            "Snap packages cannot update themselves. Open the release page to update.",
+            "Snap 套件無法自行更新。請開啟版本頁面進行更新。",
+            "Snap 软件包无法自行更新。请打开版本页面进行更新。"),
+        InstallKind.CodexPlugin => UpdateText(
+            "Codex manages plugin updates.",
+            "外掛程式的更新由 Codex 管理。",
+            "插件的更新由 Codex 管理。"),
+        _ => UpdateText(
+            "This copy cannot update itself. Open the release page to update.",
+            "此副本無法自行更新。請開啟版本頁面進行更新。",
+            "此副本无法自行更新。请打开版本页面进行更新。")
+    };
 
     public string ResetDateTimeFormat { get; init; } = DateTimeFormatOptions.MonthDay;
     public string LastUpdatedDateTimeFormat { get; init; } =

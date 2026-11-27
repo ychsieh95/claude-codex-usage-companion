@@ -18,6 +18,7 @@ public sealed record CompanionSettings
     public string TrayIconStyle { get; init; } = TrayIconStyleOptions.Original;
     public bool ShowTaskbarIcon { get; init; } = true;
     public bool EnableAutoUpdateCheck { get; init; } = true;
+    public bool EnableAutoInstallUpdates { get; init; }
     public bool StartOnBoot { get; init; }
     public bool MinimizeOnStart { get; init; }
     public string Language { get; init; } =

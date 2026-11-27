@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Automatic update installation. **Settings → Updates** has an **Install update** button and an **Automatically download and install updates** option, which is off by default. A portable install replaces its own file and restarts. A `.deb` install downloads in the background, then asks in a notification with **Install now**, and installs with `pkexec apt-get` after you enter your administrator password. Snap and Codex plugin installs still open the release page.
+- Signed releases. The release workflow signs `SHA256SUMS` with an ECDSA P-256 key and publishes `SHA256SUMS.sig`. The app installs an update only when that signature matches its built-in public key and the package matches its signed checksum.
+
 ### Changed
 
 - Refreshed the desktop panel and Settings screenshots in the English, Traditional Chinese, and Simplified Chinese READMEs. They show the panel in both the **Latest** and **Previous (v0.1.5)** designs, and the Settings window's new sidebar layout. `scripts/capture-screenshots.sh` captures both designs again; the Settings changes in v0.2.0 had broken it.

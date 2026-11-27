@@ -16,6 +16,8 @@ namespace CodexUsageCompanion.Ui;
 public sealed class SettingsWindow : Window
 {
     private readonly CheckBox _autoUpdateCheck;
+    private readonly CheckBox _autoInstallUpdates;
+    private readonly AppUpdateInstaller _updateInstaller = new();
     private readonly AppUpdateChecker _updateChecker = new();
     private readonly CancellationTokenSource _updateCancellation = new();
     private CompanionSettings _settings;
@@ -442,10 +444,38 @@ public sealed class SettingsWindow : Window
             Content = text.AutoUpdateCheckOption,
             IsChecked = settings.EnableAutoUpdateCheck
         };
+        var canSelfUpdate = InstallKindDetector.SupportsInstall(_updateInstaller.Kind);
+        _autoInstallUpdates = new CheckBox
+        {
+            Content = text.AutoInstallUpdatesOption,
+            IsChecked = canSelfUpdate && settings.EnableAutoInstallUpdates,
+            IsEnabled = canSelfUpdate && settings.EnableAutoUpdateCheck
+        };
+        _autoUpdateCheck.IsCheckedChanged += (_, _) =>
+            _autoInstallUpdates.IsEnabled = canSelfUpdate && _autoUpdateCheck.IsChecked == true;
+        var installKindHint = Hint(text.InstallKindHint(_updateInstaller.Kind));
         var checkUpdate = new Button { Content = text.CheckForUpdatesAction };
         var updateStatus = new TextBlock { TextWrapping = TextWrapping.Wrap };
         var openRelease = new Button { Content = text.OpenReleaseAction, IsVisible = false };
+        var installUpdate = new Button { Content = text.InstallUpdateAction, IsVisible = false };
         Uri? releaseUrl = null;
+        AppUpdateResult? availableUpdate = null;
+        installUpdate.Click += async (_, _) =>
+        {
+            if (availableUpdate is null || InstallUpdateRequested is not { } install) return;
+            checkUpdate.IsEnabled = false;
+            installUpdate.IsEnabled = false;
+            try
+            {
+                var error = await install(availableUpdate, status => updateStatus.Text = status);
+                if (error is not null) updateStatus.Text = error;
+            }
+            finally
+            {
+                checkUpdate.IsEnabled = true;
+                installUpdate.IsEnabled = true;
+            }
+        };
         openRelease.Click += async (_, _) =>
         {
             if (releaseUrl is null) return;
@@ -463,6 +493,7 @@ public sealed class SettingsWindow : Window
         {
             checkUpdate.IsEnabled = false;
             openRelease.IsVisible = false;
+            installUpdate.IsVisible = false;
             updateStatus.Text = text.CheckingForUpdates;
             try
             {
@@ -470,6 +501,8 @@ public sealed class SettingsWindow : Window
                 updateStatus.Text = result.UpdateAvailable ? text.FormatAppUpdate(result.Version) : text.AppUpToDate;
                 releaseUrl = result.ReleaseUrl;
                 openRelease.IsVisible = result.UpdateAvailable;
+                availableUpdate = result;
+                installUpdate.IsVisible = _updateInstaller.CanInstall(result);
             }
             catch (OperationCanceledException) when (_updateCancellation.IsCancellationRequested) { }
             catch (Exception)
@@ -527,12 +560,12 @@ public sealed class SettingsWindow : Window
             Row(text.UsageLogFilePathOption, _usageLogFilePath),
             Row(text.UsageLogFormatOption, _usageLogFormat));
         AddPage(SettingsPageOptions.Updates, text.UpdateSettingsGroup, UpdatesIcon,
-            Row(null, _autoUpdateCheck),
+            Row(null, _autoUpdateCheck, _autoInstallUpdates, installKindHint),
             Row(null, new StackPanel
             {
                 Orientation = Orientation.Horizontal,
                 Spacing = 8,
-                Children = { checkUpdate, openRelease }
+                Children = { checkUpdate, installUpdate, openRelease }
             }, updateStatus),
             Row(text.AboutLabel,
                 new TextBlock { Text = $"Claude Codex Usage Companion v{appVersion}", TextWrapping = TextWrapping.Wrap },
@@ -660,6 +693,9 @@ public sealed class SettingsWindow : Window
 
     public event Func<CompanionSettings, bool>? ApplyRequested;
 
+    /// <summary>Downloads and installs an update. Returns an error message, or null when the app restarts.</summary>
+    public event Func<AppUpdateResult, Action<string>, Task<string?>>? InstallUpdateRequested;
+
     private async Task ConfirmResetDefaultsAsync()
     {
         if (_resetPromptOpen)
@@ -735,6 +771,7 @@ public sealed class SettingsWindow : Window
             _trayIconStyle.SelectedItem = _trayIconStyle.Items.OfType<TrayIconStyleChoice>().First(choice => choice.Value == defaults.TrayIconStyle);
             _showTaskbarIcon.IsChecked = defaults.ShowTaskbarIcon;
             _autoUpdateCheck.IsChecked = defaults.EnableAutoUpdateCheck;
+            _autoInstallUpdates.IsChecked = defaults.EnableAutoInstallUpdates;
             _startOnBoot.IsChecked = defaults.StartOnBoot;
             _minimizeOnStart.IsChecked = defaults.MinimizeOnStart;
             _alwaysOnTop.IsChecked = defaults.AlwaysOnTop;
@@ -939,6 +976,10 @@ public sealed class SettingsWindow : Window
                 TrayIconStyleOptions.Original,
             ShowTaskbarIcon = _showTaskbarIcon.IsChecked == true,
             EnableAutoUpdateCheck = _autoUpdateCheck.IsChecked == true,
+            // Keep the saved choice on an installation that cannot update itself.
+            EnableAutoInstallUpdates = InstallKindDetector.SupportsInstall(_updateInstaller.Kind)
+                ? _autoInstallUpdates.IsChecked == true
+                : _settings.EnableAutoInstallUpdates,
             StartOnBoot = _startOnBoot.IsChecked == true,
             MinimizeOnStart = _minimizeOnStart.IsChecked == true,
             AlwaysOnTop = _alwaysOnTop.IsChecked == true,

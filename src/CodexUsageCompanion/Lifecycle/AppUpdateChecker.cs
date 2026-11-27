@@ -4,7 +4,11 @@ using System.Text.Json;
 
 namespace CodexUsageCompanion.Lifecycle;
 
-public sealed record AppUpdateResult(string Version, bool UpdateAvailable, Uri ReleaseUrl);
+public sealed record AppUpdateResult(string Version, bool UpdateAvailable, Uri ReleaseUrl)
+{
+    /// <summary>The file names of the release assets. Download URLs are built from the trusted repository.</summary>
+    public IReadOnlySet<string> AssetNames { get; init; } = new HashSet<string>();
+}
 
 public sealed class AppUpdateChecker
 {
@@ -33,8 +37,20 @@ public sealed class AppUpdateChecker
             throw new FormatException("Unsupported release version.");
         var stable = !release.GetProperty("draft").GetBoolean() && !release.GetProperty("prerelease").GetBoolean();
         // Construct the URL from the trusted repository, never a server-provided destination.
+        var assets = new HashSet<string>(StringComparer.Ordinal);
+        if (release.TryGetProperty("assets", out var assetList) && assetList.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var asset in assetList.EnumerateArray())
+            {
+                if (asset.TryGetProperty("name", out var name) && name.GetString() is { Length: > 0 } value)
+                    assets.Add(value);
+            }
+        }
         return new(tag, stable && latest > current,
-            new Uri(RepositoryUrl + "/releases/tag/" + Uri.EscapeDataString(tag)));
+            new Uri(RepositoryUrl + "/releases/tag/" + Uri.EscapeDataString(tag)))
+        {
+            AssetNames = assets
+        };
     }
 
     private static bool TryParseVersion(string value, out Version version)

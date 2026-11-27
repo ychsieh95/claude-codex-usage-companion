@@ -26,6 +26,11 @@
     <AvaloniaResource Include="Assets/**" />
   </ItemGroup>
   <ItemGroup>
+    <!-- The public key that verifies downloaded updates. The release workflow signs with the matching private key. -->
+    <EmbeddedResource Include="../../packaging/update-signing-key.pub.pem"
+                      LogicalName="CodexUsageCompanion.update-signing-key.pub.pem" />
+  </ItemGroup>
+  <ItemGroup>
     <InternalsVisibleTo Include="CodexUsageCompanion.Tests" />
   </ItemGroup>
 </Project>

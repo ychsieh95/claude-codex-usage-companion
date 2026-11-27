@@ -39,6 +39,17 @@ public static class LinuxPaths
         }
     }
 
+    public static string CacheDirectory
+    {
+        get
+        {
+            var xdg = Environment.GetEnvironmentVariable("XDG_CACHE_HOME");
+            return string.IsNullOrWhiteSpace(xdg)
+                ? Path.Combine(UserHome, ".cache", "claude-codex-usage-companion")
+                : Path.Combine(xdg, "claude-codex-usage-companion");
+        }
+    }
+
     public static string AutostartDirectory
     {
         get

@@ -37,6 +37,11 @@ jobs:
           SNAPCRAFT_ARGS: --destructive-mode
         run: bash scripts/build-snap.sh
 
+      - name: Sign checksums
+        env:
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+        run: bash scripts/sign-release.sh
+
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -49,6 +54,7 @@ jobs:
             artifacts/*.plasmoid
             artifacts/*.zip
             artifacts/SHA256SUMS
+            artifacts/SHA256SUMS.sig
           )
 
           notes_file="$RUNNER_TEMP/release-notes.md"

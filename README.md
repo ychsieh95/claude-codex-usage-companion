@@ -55,7 +55,34 @@ Under **Settings → Updates**, select **Check for updates** to check for a newe
 
 **Automatically check for updates (startup and daily)** is enabled by default. The app checks at startup and every 24 hours while it runs. To disable automatic checks, clear the checkbox. Then select **OK** or **Apply**. Manual checks remain available.
 
-Automatic checks show a desktop notification when a newer version is available. Download updates manually. Install the downloaded updates manually. Settings shows network errors from manual checks. The app writes network errors from automatic checks to its log.
+Automatic checks show a desktop notification when a newer version is available. Settings shows network errors from manual checks. The app writes network errors from automatic checks to its log.
+
+### Automatic install
+
+When a check finds a newer version, **Install update** appears next to **Check for updates**. To install updates without selecting it, select **Automatically download and install updates**. Then select **OK** or **Apply**. This option is off by default. It requires **Automatically check for updates**.
+
+What happens depends on how you installed the app. Settings shows a note for your installation below the options.
+
+| Installation | Behavior |
+| --- | --- |
+| Portable archive in a folder you can write to, such as `~/.local/bin` | The app downloads the update, replaces its file, and restarts. It does not ask for a password. |
+| Debian package | The app downloads the update in the background. A notification asks you to install it. Select **Install now** to enter your administrator password. The app installs the package with `pkexec apt-get install`. Then it restarts. |
+| Snap | The app cannot replace files that snapd owns. Open the release page to update manually. |
+| Codex plugin | Codex manages plugin updates. |
+
+The app installs an update only when its package passes two checks:
+
+1. The `SHA256SUMS` file in the release has a valid signature from the project's release key. The app includes the public key, so a changed release or a different key fails this check.
+2. The SHA-256 hash of the downloaded package matches its entry in the signed `SHA256SUMS`.
+
+Releases before v0.2.1 have no signature, so the app does not install them automatically. Downloads go to `${XDG_CACHE_HOME:-$HOME/.cache}/claude-codex-usage-companion/updates`. The app keeps only the latest download. If an update fails, a notification links to the release page. The app writes the error to its log.
+
+To check a downloaded release manually, run these commands in the download folder. Save the [public key](packaging/update-signing-key.pub.pem) there first.
+
+```bash
+openssl dgst -sha256 -verify update-signing-key.pub.pem -signature SHA256SUMS.sig SHA256SUMS
+sha256sum --check --ignore-missing SHA256SUMS
+```
 
 If you hide a provider's bars, its usage checks continue. To stop its usage checks, clear **Enable Claude usage** or **Enable Codex usage**. This also clears that provider's errors.
 

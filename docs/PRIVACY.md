@@ -12,6 +12,7 @@ Local files:
 - If login autostart is enabled, the app creates `${XDG_CONFIG_HOME:-$HOME/.config}/autostart/claude-codex-usage-companion.desktop`; disabling the option removes that file.
 - Bounded diagnostic logs are stored under `${XDG_STATE_HOME:-$HOME/.local/state}/claude-codex-usage-companion`.
 - Optional usage update logging is disabled by default. When enabled, the selected TXT, CSV, or JSONL file stores refresh timestamps, which provider (Claude or Codex) the entry is for, success or error status, remaining percentages, reset times, available reset credits, and refresh errors. The user can choose its local path.
+- Downloaded updates are stored under `${XDG_CACHE_HOME:-$HOME/.cache}/claude-codex-usage-companion/updates`. Only the latest download is kept.
 - Single-instance messages use an owner-only Unix socket under `XDG_RUNTIME_DIR`.
 - No settings or logs are uploaded by the plugin.
 

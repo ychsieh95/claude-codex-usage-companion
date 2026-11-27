@@ -51,6 +51,12 @@ coverage.*
 !.env.example
 *.local.json
 
+# Release signing key (never commit)
+/.secrets/
+# Backup rule: ignore any private key file, wherever it ends up
+*.pem
+!packaging/update-signing-key.pub.pem
+
 # Logs, process state, and crash dumps
 *.dmp
 *.log

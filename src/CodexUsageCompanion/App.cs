@@ -40,6 +40,8 @@ public sealed class App : Application
     private bool _shutdownRequested;
     private Task? _shutdownTask;
     private readonly AppUpdateChecker _updateChecker = new();
+    private readonly AppUpdateInstaller _updateInstaller = new();
+    private bool _installingUpdate;
     private readonly CancellationTokenSource _updateCancellation = new();
     private DispatcherTimer? _updateCheckTimer;
     private bool _checkingUpdate;
@@ -443,6 +445,7 @@ public sealed class App : Application
         dialog.PositionPreviewRequested += _window.ApplyPosition;
         dialog.AppearancePreviewRequested += _window.ApplyAppearance;
         dialog.ApplyRequested += TryApplySettings;
+        dialog.InstallUpdateRequested += InstallUpdateAsync;
         _settingsWindow = dialog;
         try
         {
@@ -823,13 +826,96 @@ public sealed class App : Application
                 _notifiedUpdateVersion != result.Version)
             {
                 _notifiedUpdateVersion = result.Version;
-                _notificationService.Show("Claude Codex Usage Companion",
-                    _text.FormatAppUpdate(result.Version) + "\n" + result.ReleaseUrl, critical: false);
+                if (!_settings.EnableAutoInstallUpdates || !await TryAutoInstallUpdateAsync(result))
+                {
+                    _notificationService.Show("Claude Codex Usage Companion",
+                        _text.FormatAppUpdate(result.Version) + "\n" + result.ReleaseUrl, critical: false);
+                }
             }
         }
         catch (OperationCanceledException) when (_updateCancellation.IsCancellationRequested) { }
         catch (Exception exception) { CompanionLog.Shared.Write("update-check", exception); }
         finally { _checkingUpdate = false; }
+    }
+
+    // Returns true when the update was handled, so the plain "update available" notification is not needed.
+    private async Task<bool> TryAutoInstallUpdateAsync(AppUpdateResult result)
+    {
+        if (!_updateInstaller.CanInstall(result)) return false;
+        PreparedUpdate prepared;
+        try
+        {
+            prepared = await _updateInstaller.DownloadAsync(result, _updateCancellation.Token);
+        }
+        catch (OperationCanceledException) when (_updateCancellation.IsCancellationRequested) { return true; }
+        catch (Exception exception)
+        {
+            CompanionLog.Shared.Write("update-install", exception);
+            return false;
+        }
+
+        if (_shutdownRequested) return true;
+        if (prepared.Kind == InstallKind.Debian)
+        {
+            // Installing a .deb needs the administrator password, so ask before showing the prompt.
+            var accepted = await _notificationService.ShowWithActionAsync("Claude Codex Usage Companion",
+                _text.FormatUpdateReadyToInstall(prepared.Version), _text.InstallNowAction, _updateCancellation.Token);
+            if (accepted is null) return false;
+            if (accepted == false || _shutdownRequested) return true;
+        }
+
+        var error = await InstallPreparedUpdateAsync(prepared);
+        if (error is not null)
+            _notificationService.Show("Claude Codex Usage Companion",
+                error + "\n" + result.ReleaseUrl, critical: false);
+        return true;
+    }
+
+    // Called by Settings. Returns an error message, or null when the update installed and the app is restarting.
+    private async Task<string?> InstallUpdateAsync(AppUpdateResult result, Action<string> reportStatus)
+    {
+        try
+        {
+            reportStatus(_text.DownloadingUpdate);
+            var prepared = await _updateInstaller.DownloadAsync(result, _updateCancellation.Token);
+            reportStatus(_text.InstallingUpdate);
+            return await InstallPreparedUpdateAsync(prepared);
+        }
+        catch (OperationCanceledException) when (_updateCancellation.IsCancellationRequested) { return null; }
+        catch (Exception exception)
+        {
+            CompanionLog.Shared.Write("update-install", exception);
+            return _text.UpdateInstallFailed;
+        }
+    }
+
+    private async Task<string?> InstallPreparedUpdateAsync(PreparedUpdate prepared)
+    {
+        if (_shutdownRequested) return null;
+        if (_installingUpdate) return _text.InstallingUpdate;
+        _installingUpdate = true;
+        try
+        {
+            await _updateInstaller.InstallAsync(prepared, _updateCancellation.Token);
+        }
+        catch (OperationCanceledException) when (_updateCancellation.IsCancellationRequested) { return null; }
+        catch (UpdateInstallException exception) when (exception.Cancelled)
+        {
+            return _text.UpdateInstallCancelled;
+        }
+        catch (Exception exception)
+        {
+            CompanionLog.Shared.Write("update-install", exception);
+            return _text.UpdateInstallFailed;
+        }
+        finally { _installingUpdate = false; }
+
+        CompanionLog.Shared.Write("update-install", $"Installed version {prepared.Version}; restarting.");
+        _notificationService.Show("Claude Codex Usage Companion",
+            _text.FormatUpdateInstalled(prepared.Version), critical: false);
+        if (_updateInstaller.TargetPath is { } path) DetachedLauncher.StartAfterExit(path);
+        await ShutdownAsync();
+        return null;
     }
 
     private static UiText ResolveText(CompanionSettings settings)
