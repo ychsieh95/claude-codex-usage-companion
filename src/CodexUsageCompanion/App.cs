@@ -469,7 +469,7 @@ public sealed class App : Application
         }
         finally
         {
-            SaveSettingsSectionState(dialog.SectionState);
+            SaveSettingsPage(dialog.SelectedPage);
             dialog.PositionPreviewRequested -= _window.ApplyPosition;
             dialog.AppearancePreviewRequested -= _window.ApplyAppearance;
             dialog.ApplyRequested -= TryApplySettings;
@@ -477,20 +477,20 @@ public sealed class App : Application
         }
     }
 
-    private void SaveSettingsSectionState(SettingsSectionState sections)
+    private void SaveSettingsPage(string page)
     {
-        if (_settings.SettingsSections == sections)
+        if (_settings.SettingsPage == page)
             return;
         try
         {
             // Save only view state, including after Cancel; unapplied form edits
             // remain discarded. Use the latest settings in case Apply was used.
-            _settings = CompanionSettingsStore.Save(_settings with { SettingsSections = sections });
+            _settings = CompanionSettingsStore.Save(_settings with { SettingsPage = page });
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            CompanionLog.Shared.Write("settings-sections", exception);
-            _window?.SetStatus(null, $"Unable to save settings section state: {exception.Message}");
+            CompanionLog.Shared.Write("settings-page", exception);
+            _window?.SetStatus(null, $"Unable to save the settings page: {exception.Message}");
         }
     }
 

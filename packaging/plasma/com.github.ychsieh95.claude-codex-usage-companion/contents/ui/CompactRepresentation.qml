@@ -11,216 +11,184 @@ MouseArea {
     id: compact
     required property var controller
 
-    readonly property bool barView: Plasmoid.configuration.compactViewStyle === 1
-    readonly property bool vertical: {
-        if (width > 0 && height > 0 &&
-                Math.abs(height - width) > Kirigami.Units.gridUnit) {
-            return height > width;
-        }
-        return Plasmoid.formFactor === PlasmaCore.Types.Vertical;
-    }
-    readonly property int entryCount: Math.max(1, controller.compactEntries.length)
-    readonly property real circleExtent: Kirigami.Units.iconSizes.medium + Kirigami.Units.smallSpacing
-    readonly property real barExtent: Kirigami.Units.gridUnit * 4
-    readonly property real entryExtent: barView ? barExtent : circleExtent
-    readonly property real crossExtent: barView
-        ? Kirigami.Units.iconSizes.medium + Kirigami.Units.smallSpacing
-        : Kirigami.Units.iconSizes.medium
+    readonly property bool stripView: Plasmoid.configuration.compactViewStyle === 1
+    readonly property bool vertical: Plasmoid.formFactor === PlasmaCore.Types.Vertical ||
+                                     (Plasmoid.formFactor !== PlasmaCore.Types.Horizontal &&
+                                      height > width + Kirigami.Units.gridUnit)
+    readonly property bool showLabels: Plasmoid.configuration.compactShowLabels
+    readonly property var entries: controller.panelEntries.length > 0
+        ? controller.panelEntries
+        : [{ "shortLabel": "", "title": i18n("Usage unavailable"), "percent": -1, "provider": "" }]
+    readonly property int entryCount: Math.max(1, entries.length)
+    readonly property real radialExtent: Kirigami.Units.iconSizes.medium + Kirigami.Units.smallSpacing
+    readonly property real stripLength: Kirigami.Units.gridUnit * 3.7
+    readonly property real cellLength: stripView ? stripLength : radialExtent
+    readonly property real cellThickness: stripView ? Kirigami.Units.iconSizes.medium : radialExtent
 
-    Layout.minimumWidth: vertical ? Kirigami.Units.iconSizes.smallMedium : entryExtent * entryCount
-    Layout.minimumHeight: vertical ? entryExtent * entryCount : Kirigami.Units.iconSizes.smallMedium
-    Layout.preferredWidth: vertical ? crossExtent : entryExtent * entryCount
-    Layout.preferredHeight: vertical ? entryExtent * entryCount : crossExtent
+    Layout.minimumWidth: vertical ? Kirigami.Units.iconSizes.smallMedium : cellLength * entryCount
+    Layout.minimumHeight: vertical ? cellLength * entryCount : Kirigami.Units.iconSizes.smallMedium
+    Layout.preferredWidth: vertical ? cellThickness : cellLength * entryCount
+    Layout.preferredHeight: vertical ? cellLength * entryCount : cellThickness
     activeFocusOnTab: true
     hoverEnabled: true
-    onClicked: Plasmoid.expanded = !Plasmoid.expanded
-    Keys.onSpacePressed: Plasmoid.expanded = !Plasmoid.expanded
-    Keys.onReturnPressed: Plasmoid.expanded = !Plasmoid.expanded
+    Accessible.name: controller.toolTipSubText
 
-    Loader {
+    onClicked: controller.activate()
+    Keys.onSpacePressed: controller.activate()
+    Keys.onReturnPressed: controller.activate()
+
+    Rectangle {
         anchors.fill: parent
-        sourceComponent: compact.barView ? barComponent : circleComponent
+        radius: Kirigami.Units.cornerRadius
+        color: compact.containsMouse || compact.activeFocus
+            ? compact.alpha(Kirigami.Theme.highlightColor, 0.12)
+            : "transparent"
+        Behavior on color { ColorAnimation { duration: Kirigami.Units.shortDuration } }
     }
 
-    Component {
-        id: circleComponent
+    GridLayout {
+        anchors.fill: parent
+        rows: compact.vertical ? compact.entryCount : 1
+        columns: compact.vertical ? 1 : compact.entryCount
+        rowSpacing: 0
+        columnSpacing: 0
 
-        GridLayout {
-            rows: compact.vertical ? compact.entryCount : 1
-            columns: compact.vertical ? 1 : compact.entryCount
-            rowSpacing: 0
-            columnSpacing: 0
+        Repeater {
+            model: compact.entries
 
-            Repeater {
-                model: compact.displayEntries()
+            delegate: Item {
+                id: cell
+                required property var modelData
+                readonly property color meterColor: compact.controller.colorForPercent(modelData.percent)
+                readonly property real fraction: modelData.percent < 0
+                    ? 0 : Math.max(0, Math.min(1, compact.controller.displayPercent(modelData.percent) / 100))
 
-                delegate: Item {
-                    id: circleItem
-                    required property var modelData
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Layout.preferredWidth: compact.vertical ? compact.cellThickness : compact.cellLength
+                Layout.preferredHeight: compact.vertical ? compact.cellLength : compact.cellThickness
 
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    Layout.preferredWidth: compact.circleExtent
-                    Layout.preferredHeight: compact.circleExtent
+                Loader {
+                    anchors.fill: parent
+                    sourceComponent: compact.stripView ? stripMeter : radialMeter
+                }
 
-                    readonly property real circleSize: Math.max(
-                        Kirigami.Units.iconSizes.small,
-                        Math.min(width, height) - Kirigami.Units.smallSpacing)
-                    readonly property color ringColor: compact.controller.colorForPercent(modelData.percent)
-
-                    Canvas {
-                        id: progressRing
-                        anchors.centerIn: parent
-                        width: circleItem.circleSize
-                        height: width
-                        opacity: compact.controller.refreshing ? 0.55 : 1
-
-                        onPaint: compact.paintRing(
-                            getContext("2d"),
-                            width,
-                            circleItem.modelData.percent,
-                            circleItem.ringColor)
-
-                        Connections {
-                            target: compact.controller
-                            function onCompactEntriesChanged() { progressRing.requestPaint(); }
-                        }
-                    }
-
-                    Column {
-                        anchors.centerIn: parent
-                        spacing: -2
-
-                        PlasmaComponents3.Label {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            text: compact.percentText(circleItem.modelData.percent)
-                            font.bold: true
-                            font.pixelSize: Math.max(8, circleItem.circleSize * 0.28)
+                Component {
+                    id: radialMeter
+                    Item {
+                        Canvas {
+                            id: ring
+                            anchors.centerIn: parent
+                            width: Math.max(Kirigami.Units.iconSizes.small,
+                                            Math.min(parent.width, parent.height) - Kirigami.Units.smallSpacing)
+                            height: width
+                            opacity: compact.controller.refreshing ? 0.55 : 1
+                            // Threshold settings change the colour without changing the data.
+                            readonly property color paintColor: cell.meterColor
+                            onPaintColorChanged: requestPaint()
+                            onPaint: compact.paintRing(getContext("2d"), width,
+                                                       compact.controller.displayPercent(cell.modelData.percent), cell.meterColor)
+                            Connections {
+                                target: compact.controller
+                                function onCompactEntriesChanged() { ring.requestPaint(); }
+                                function onShowUsedChanged() { ring.requestPaint(); }
+                            }
                         }
 
-                        PlasmaComponents3.Label {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            text: circleItem.modelData.shortLabel
-                            opacity: 0.7
-                            font.pixelSize: Math.max(6, circleItem.circleSize * 0.18)
+                        Column {
+                            anchors.centerIn: parent
+                            spacing: -Math.round(Kirigami.Units.smallSpacing / 2)
+                            PlasmaComponents3.Label {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: compact.percentText(compact.controller.displayPercent(cell.modelData.percent))
+                                font.weight: Font.DemiBold
+                                font.pixelSize: Math.max(8, ring.width * 0.27)
+                            }
+                            PlasmaComponents3.Label {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: cell.modelData.shortLabel
+                                visible: compact.showLabels && text.length > 0 &&
+                                         ring.width >= Kirigami.Units.iconSizes.medium
+                                color: Kirigami.Theme.disabledTextColor
+                                font.pixelSize: Math.max(6, ring.width * 0.17)
+                            }
                         }
                     }
                 }
-            }
-        }
-    }
 
-    Component {
-        id: barComponent
-
-        GridLayout {
-            rows: compact.vertical ? compact.entryCount : 1
-            columns: compact.vertical ? 1 : compact.entryCount
-            rowSpacing: 0
-            columnSpacing: 0
-
-            Repeater {
-                model: compact.displayEntries()
-
-                delegate: Item {
-                    id: barItem
-                    required property var modelData
-
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    Layout.preferredWidth: compact.vertical ? compact.crossExtent : compact.barExtent
-                    Layout.preferredHeight: compact.vertical ? compact.barExtent : compact.crossExtent
-
-                    readonly property real fraction: modelData.percent < 0
-                        ? 0
-                        : Math.max(0, Math.min(1, modelData.percent / 100))
-                    readonly property color progressColor: compact.controller.colorForPercent(modelData.percent)
-
-                    ColumnLayout {
-                        anchors.fill: parent
-                        anchors.margins: Kirigami.Units.smallSpacing
-                        spacing: 2
-                        visible: !compact.vertical
+                Component {
+                    id: stripMeter
+                    Item {
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.margins: Kirigami.Units.smallSpacing
+                            spacing: 2
+                            visible: !compact.vertical
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: Kirigami.Units.smallSpacing
+                                PlasmaComponents3.Label {
+                                    Layout.fillWidth: true
+                                    opacity: compact.showLabels ? 1 : 0
+                                    text: cell.modelData.shortLabel
+                                    color: Kirigami.Theme.disabledTextColor
+                                    font: Kirigami.Theme.smallFont
+                                }
+                                PlasmaComponents3.Label {
+                                    text: compact.percentText(compact.controller.displayPercent(cell.modelData.percent))
+                                    font.weight: Font.DemiBold
+                                }
+                            }
+                            Rectangle {
+                                Layout.fillWidth: true
+                                implicitHeight: Math.max(3, Math.round(Kirigami.Units.smallSpacing * 0.7))
+                                radius: height / 2
+                                color: compact.alpha(Kirigami.Theme.textColor, 0.14)
+                                Rectangle {
+                                    width: parent.width * cell.fraction
+                                    height: parent.height
+                                    radius: parent.radius
+                                    color: cell.modelData.percent < 0 ? "transparent" : cell.meterColor
+                                    Behavior on width { NumberAnimation { duration: Kirigami.Units.longDuration } }
+                                }
+                            }
+                        }
 
                         RowLayout {
-                            Layout.fillWidth: true
+                            anchors.fill: parent
+                            anchors.margins: Kirigami.Units.smallSpacing
                             spacing: Kirigami.Units.smallSpacing
-
-                            PlasmaComponents3.Label {
+                            visible: compact.vertical
+                            Rectangle {
+                                Layout.fillHeight: true
+                                implicitWidth: Math.max(3, Math.round(Kirigami.Units.smallSpacing * 0.7))
+                                radius: width / 2
+                                color: compact.alpha(Kirigami.Theme.textColor, 0.14)
+                                Rectangle {
+                                    anchors.bottom: parent.bottom
+                                    width: parent.width
+                                    height: parent.height * cell.fraction
+                                    radius: parent.radius
+                                    color: cell.modelData.percent < 0 ? "transparent" : cell.meterColor
+                                    Behavior on height { NumberAnimation { duration: Kirigami.Units.longDuration } }
+                                }
+                            }
+                            ColumnLayout {
                                 Layout.fillWidth: true
-                                text: barItem.modelData.shortLabel
-                                opacity: 0.75
-                                font.pixelSize: Math.max(7, Kirigami.Theme.smallFont.pixelSize * 0.85)
-                            }
-
-                            PlasmaComponents3.Label {
-                                text: compact.percentText(barItem.modelData.percent)
-                                font.bold: true
-                                font.pixelSize: Math.max(8, Kirigami.Theme.smallFont.pixelSize)
-                            }
-                        }
-
-                        Rectangle {
-                            Layout.fillWidth: true
-                            implicitHeight: Math.max(4, Kirigami.Units.smallSpacing)
-                            radius: height / 2
-                            color: compact.trackColor()
-
-                            Rectangle {
-                                width: parent.width * barItem.fraction
-                                height: parent.height
-                                radius: parent.radius
-                                color: barItem.modelData.percent < 0 ? "transparent" : barItem.progressColor
-
-                                Behavior on width {
-                                    NumberAnimation { duration: Kirigami.Units.shortDuration }
+                                Layout.alignment: Qt.AlignVCenter
+                                spacing: 0
+                                PlasmaComponents3.Label {
+                                    Layout.alignment: Qt.AlignHCenter
+                                    text: compact.percentText(compact.controller.displayPercent(cell.modelData.percent))
+                                    font.weight: Font.DemiBold
                                 }
-                            }
-                        }
-                    }
-
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.margins: Kirigami.Units.smallSpacing
-                        spacing: Kirigami.Units.smallSpacing
-                        visible: compact.vertical
-
-                        Rectangle {
-                            Layout.fillHeight: true
-                            implicitWidth: Math.max(4, Kirigami.Units.smallSpacing)
-                            radius: width / 2
-                            color: compact.trackColor()
-
-                            Rectangle {
-                                anchors.bottom: parent.bottom
-                                width: parent.width
-                                height: parent.height * barItem.fraction
-                                radius: parent.radius
-                                color: barItem.modelData.percent < 0 ? "transparent" : barItem.progressColor
-
-                                Behavior on height {
-                                    NumberAnimation { duration: Kirigami.Units.shortDuration }
+                                PlasmaComponents3.Label {
+                                    Layout.alignment: Qt.AlignHCenter
+                                    visible: compact.showLabels
+                                    text: cell.modelData.shortLabel
+                                    color: Kirigami.Theme.disabledTextColor
+                                    font: Kirigami.Theme.smallFont
                                 }
-                            }
-                        }
-
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            Layout.alignment: Qt.AlignVCenter
-                            spacing: -2
-
-                            PlasmaComponents3.Label {
-                                Layout.alignment: Qt.AlignHCenter
-                                text: compact.percentText(barItem.modelData.percent)
-                                font.bold: true
-                                font.pixelSize: Math.max(8, Kirigami.Theme.smallFont.pixelSize)
-                            }
-
-                            PlasmaComponents3.Label {
-                                Layout.alignment: Qt.AlignHCenter
-                                text: barItem.modelData.shortLabel
-                                opacity: 0.75
-                                font.pixelSize: Math.max(7, Kirigami.Theme.smallFont.pixelSize * 0.85)
                             }
                         }
                     }
@@ -229,47 +197,25 @@ MouseArea {
         }
     }
 
-    function displayEntries() {
-        return controller.compactEntries.length > 0
-            ? controller.compactEntries
-            : [{ "shortLabel": "", "title": i18n("Usage unavailable"), "percent": -1 }];
-    }
-
-    function percentText(percent) {
-        return percent < 0 ? "--" : percent.toString();
-    }
-
-    function trackColor() {
-        return Qt.rgba(
-            Kirigami.Theme.textColor.r,
-            Kirigami.Theme.textColor.g,
-            Kirigami.Theme.textColor.b,
-            0.16);
-    }
+    function percentText(percent) { return percent < 0 ? "—" : percent.toString(); }
+    function alpha(color, opacity) { return Qt.rgba(color.r, color.g, color.b, opacity); }
 
     function paintRing(context, size, percent, progressColor) {
         context.clearRect(0, 0, size, size);
         const lineWidth = Math.max(2, Math.round(size / 12));
         const radius = size / 2 - lineWidth / 2;
         const center = size / 2;
-
         context.lineWidth = lineWidth;
         context.lineCap = "round";
-        context.strokeStyle = trackColor();
+        context.strokeStyle = alpha(Kirigami.Theme.textColor, 0.14);
         context.beginPath();
         context.arc(center, center, radius, 0, Math.PI * 2, false);
         context.stroke();
-
         if (percent >= 0) {
             context.strokeStyle = progressColor;
             context.beginPath();
-            context.arc(
-                center,
-                center,
-                radius,
-                -Math.PI / 2,
-                -Math.PI / 2 + Math.PI * 2 * percent / 100,
-                false);
+            context.arc(center, center, radius, -Math.PI / 2,
+                        -Math.PI / 2 + Math.PI * 2 * percent / 100, false);
             context.stroke();
         }
     }

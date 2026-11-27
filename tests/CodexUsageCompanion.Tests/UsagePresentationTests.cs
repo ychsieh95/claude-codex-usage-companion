@@ -1,3 +1,4 @@
+using CodexUsageCompanion.Configuration;
 using CodexUsageCompanion.RateLimits;
 using CodexUsageCompanion.Ui;
 using Xunit;
@@ -80,4 +81,46 @@ public sealed class UsagePresentationTests
 
         Assert.Equal("於 7月17日 重置", UsagePresentation.FormatWeeklyReset(reset));
     }
+
+    [Theory]
+    [InlineData(HeaderBadgeOptions.Lowest, 23, "Codex")]
+    [InlineData(HeaderBadgeOptions.Claude, 41, "Claude")]
+    [InlineData(HeaderBadgeOptions.Codex, 23, "Codex")]
+    [InlineData("unknown", 23, "Codex")]
+    public void BadgeShowsTheLowestRemainingLimitOfTheSelectedScope(string mode, int expected, string provider)
+    {
+        var badge = UsagePresentation.SelectBadge(mode, Entries)!;
+        Assert.Equal(expected, badge.RemainingPercent);
+        Assert.Equal(provider, badge.Source!.Provider);
+    }
+
+    [Fact]
+    public void BadgeAveragesShownLimitsAndNamesASingleLimit()
+    {
+        // (68 + 41 + 23 + 82) / 4 = 53.5, rounded away from zero.
+        var average = UsagePresentation.SelectBadge(HeaderBadgeOptions.Average, Entries)!;
+        Assert.Equal(54, average.RemainingPercent);
+        Assert.Null(average.Source);
+        Assert.Equal(4, average.Count);
+
+        var single = UsagePresentation.SelectBadge(HeaderBadgeOptions.Average, [Entries[1]])!;
+        Assert.Equal(41, single.RemainingPercent);
+        Assert.Equal(Entries[1], single.Source);
+    }
+
+    [Fact]
+    public void BadgeHidesWhenHiddenOrTheScopeHasNoData()
+    {
+        Assert.Null(UsagePresentation.SelectBadge(HeaderBadgeOptions.Hidden, Entries));
+        Assert.Null(UsagePresentation.SelectBadge(HeaderBadgeOptions.Codex, [Entries[0], Entries[1]]));
+        Assert.Null(UsagePresentation.SelectBadge(HeaderBadgeOptions.Lowest, []));
+    }
+
+    private static readonly BadgeEntry[] Entries =
+    [
+        new("Claude", "Current session", 68),
+        new("Claude", "Current week (All)", 41),
+        new("Codex", "5-hour limit", 23),
+        new("Codex", "Weekly limit", 82)
+    ];
 }

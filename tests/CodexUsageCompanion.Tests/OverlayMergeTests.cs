@@ -22,13 +22,16 @@ public static class OverlayTestApplication
 
 public sealed class OverlayMergeTests
 {
+    // Tests of the Previous (v0.1.5) bar layout pin that design; the default is Latest.
+    private static readonly CompanionSettings PreviousDesign = new() { OverlayDesign = OverlayDesignOptions.Previous };
+
     private static readonly HeadlessUnitTestSession Session =
         HeadlessUnitTestSession.StartNew(typeof(OverlayTestApplication));
 
     [Fact]
     public Task HeaderWhitespaceStartsCustomPositionTracking() => Session.Dispatch(() =>
     {
-        var window = new UsageOverlayWindow();
+        var window = new UsageOverlayWindow(PreviousDesign);
         try
         {
             window.Show();
@@ -105,7 +108,7 @@ public sealed class OverlayMergeTests
     [InlineData(5)]
     public Task TopPaddingAboveEachHeaderButtonStartsWindowDrag(int buttonIndex) => Session.Dispatch(() =>
     {
-        var window = new UsageOverlayWindow();
+        var window = new UsageOverlayWindow(PreviousDesign);
         try
         {
             window.Show();
@@ -176,7 +179,7 @@ public sealed class OverlayMergeTests
     [Fact]
     public Task EnablingCodexFiveHourFitsCreditsAndStatusWithoutScrolling() => Session.Dispatch(() =>
     {
-        var settings = new CompanionSettings { EnableClaudeUsage = false };
+        var settings = PreviousDesign with { EnableClaudeUsage = false };
         var window = new UsageOverlayWindow(settings);
         window.UpdateUsage(UsageProvider.Codex, new RateLimitState(
             new(3, 300, 1791775260), new(85, 10080, 1792371660), null)
@@ -191,7 +194,7 @@ public sealed class OverlayMergeTests
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
         Assert.True(window.Height >= initialHeight + OverlayLayoutOptions.FiveHourCardHeight);
         var status = window.GetVisualDescendants().OfType<TextBlock>()
-            .Single(text => text.Text?.StartsWith("Last updated at") == true);
+            .Single(text => text.IsEffectivelyVisible && text.Text?.StartsWith("Last updated at") == true);
         var bottom = status.TranslatePoint(new Point(0, status.Bounds.Height), window)!.Value.Y;
         Assert.InRange(window.Height - bottom, 12.5, 14.5);
         window.ApplySettings(settings, UiText.For(UiLanguage.English));
@@ -203,7 +206,7 @@ public sealed class OverlayMergeTests
     [Fact]
     public Task CreditDetailsAreVisibleBelowWeeklyProgressBar() => Session.Dispatch(() =>
     {
-        var window = new UsageOverlayWindow();
+        var window = new UsageOverlayWindow(PreviousDesign);
         window.UpdateUsage(UsageProvider.Codex, new RateLimitState(null,
             new RateLimitWindowState(87, 10080, null), null)
         {
@@ -212,7 +215,7 @@ public sealed class OverlayMergeTests
         });
         window.Show();
         var details = Assert.Single(window.GetVisualDescendants().OfType<TextBlock>(),
-            text => text.Text == "Credits: 12.50, Automatic reload: Enabled");
+            text => text.IsEffectivelyVisible && text.Text == "Credits: 12.50, Automatic reload: Enabled");
         Assert.True(details.IsEffectivelyVisible);
         var card = details.GetVisualAncestors().OfType<Border>()
             .First(border => border.Height == OverlayLayoutOptions.WeeklyCardHeight);
@@ -247,7 +250,7 @@ public sealed class OverlayMergeTests
     [Fact]
     public Task FontAndCardSizingCoexistWithProviderHeadingsAndAppearance() => Session.Dispatch(() =>
     {
-        var settings = new CompanionSettings
+        var settings = PreviousDesign with
         {
             FontScale = 1.5,
             ClaudeSessionCardHeight = 200,
@@ -273,7 +276,7 @@ public sealed class OverlayMergeTests
     [Fact]
     public Task CardResizeHandleUpdatesHeightAndNotifiesPersistence() => Session.Dispatch(() =>
     {
-        var window = new UsageOverlayWindow();
+        var window = new UsageOverlayWindow(PreviousDesign);
         window.Show();
         UsageCardKind? changedKind = null;
         double changedHeight = 0;
@@ -298,34 +301,68 @@ public sealed class OverlayMergeTests
         window.Close();
     }, CancellationToken.None);
     [Fact]
-    public Task SettingsBulkActionsRestoreStateAndDoNotCreateUnsavedEdits() => Session.Dispatch(() =>
+    public Task SettingsSidebarShowsOnePageAndRestoresItWithoutUnsavedEdits() => Session.Dispatch(() =>
     {
-        var settings = new CompanionSettings
-        {
-            SettingsSections = new SettingsSectionState { Appearance = false, Logging = false }
-        };
-        var window = new SettingsWindow(settings, UiText.For(UiLanguage.English));
+        var window = new SettingsWindow(new CompanionSettings { SettingsPage = SettingsPageOptions.Logging },
+            UiText.For(UiLanguage.English));
         window.Show();
-        Assert.Equal(settings.SettingsSections, window.SectionState);
-        var buttons = window.GetVisualDescendants().OfType<Button>().ToArray();
-        buttons.Single(button => Avalonia.Automation.AutomationProperties.GetName(button) == "Collapse all")
-            .RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
-        foreach (var key in new[] { "appearance", "dateTime", "logging", "notifications", "usage", "window" })
-            Assert.False(window.SectionState.IsExpanded(key));
-        buttons.Single(button => Avalonia.Automation.AutomationProperties.GetName(button) == "Expand all")
-            .RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
-        Assert.Equal(new SettingsSectionState(), window.SectionState);
+        Assert.Equal(SettingsPageOptions.Logging, window.SelectedPage);
+        var headings = window.GetVisualDescendants().OfType<TextBlock>().Where(text => text.FontSize == 20).ToArray();
+        Assert.Equal(7, headings.Length);
+        Assert.Equal("Logging", Assert.Single(headings, text => text.IsEffectivelyVisible).Text);
+
+        var sidebar = window.GetVisualDescendants().OfType<ListBox>().Single();
+        sidebar.SelectedIndex = 1;
+        Assert.Equal(SettingsPageOptions.Appearance, window.SelectedPage);
+        Assert.Equal("Appearance", Assert.Single(headings, text => text.IsEffectivelyVisible).Text);
+        Assert.Contains(window.GetVisualDescendants().OfType<CheckBox>(),
+            box => box.IsEffectivelyVisible && Equals(box.Content, "Show each limit's name and reset time on one row"));
+
+        // Switching pages is view state, so closing does not ask about unsaved changes.
         var closed = false;
         window.Closed += (_, _) => closed = true;
         window.Close();
         Assert.True(closed);
+    }, CancellationToken.None);
+
+    [Fact]
+    public Task LatestDesignCanShowNameAndResetTimeOnOneRow() => Session.Dispatch(() =>
+    {
+        var settings = new CompanionSettings { EnableCodexUsage = false, ShowClaudeWeekly = false };
+        var window = new UsageOverlayWindow(settings);
+        try
+        {
+            window.UpdateUsage(UsageProvider.Claude, new RateLimitState(
+                new RateLimitWindowState(68, 300, DateTimeOffset.UtcNow.AddMinutes(134).ToUnixTimeSeconds()), null, null));
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            TextBlock Find(string prefix) => window.GetVisualDescendants().OfType<TextBlock>()
+                .Single(text => text.IsEffectivelyVisible && text.Text?.StartsWith(prefix) == true);
+            double Top(TextBlock text) => text.TranslatePoint(default, window)!.Value.Y;
+            Assert.True(Top(Find("Resets in")) > Top(Find("Current session")));
+            var twoRowHeight = window.Height;
+
+            window.ApplySettings(settings with { ResetTimeOnNameRow = true }, UiText.For(UiLanguage.English));
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            window.UpdateLayout();
+            var title = Find("Current session");
+            var reset = Find("Resets in");
+            Assert.InRange(Top(reset) + reset.Bounds.Height / 2 - (Top(title) + title.Bounds.Height / 2), -3, 3);
+            Assert.True(reset.TranslatePoint(default, window)!.Value.X >
+                title.TranslatePoint(new Point(title.Bounds.Width, 0), window)!.Value.X);
+            Assert.True(window.Height < twoRowHeight);
+        }
+        finally
+        {
+            window.Close();
+        }
     }, CancellationToken.None);
     [Fact]
     public Task DefaultCardsFitProgressBarsAtEveryFontScale() => Session.Dispatch(() =>
     {
         foreach (var scale in new[] { 0.8, 1.0, 1.5 })
         {
-            var window = new UsageOverlayWindow(new CompanionSettings { ShowCodexFiveHour = true, FontScale = scale });
+            var window = new UsageOverlayWindow(new CompanionSettings { OverlayDesign = OverlayDesignOptions.Previous, ShowCodexFiveHour = true, FontScale = scale });
             window.Show();
             var progresses = window.GetVisualDescendants().OfType<Border>()
                 .Where(border => border.ClipToBounds && border.CornerRadius.TopLeft == 6).ToArray();
@@ -368,6 +405,7 @@ public sealed class OverlayMergeTests
     {
         var window = new UsageOverlayWindow(new CompanionSettings
         {
+            OverlayDesign = OverlayDesignOptions.Previous,
             EnableClaudeUsage = false, ShowCodexFiveHour = true
         });
         window.Show();
@@ -393,7 +431,7 @@ public sealed class OverlayMergeTests
     [Fact]
     public Task ChangingLabelGapRefitsWidenedWindowInBothDirections() => Session.Dispatch(() =>
     {
-        var window = new UsageOverlayWindow(new CompanionSettings { ShowCodexFiveHour = true });
+        var window = new UsageOverlayWindow(new CompanionSettings { OverlayDesign = OverlayDesignOptions.Previous, ShowCodexFiveHour = true });
         window.Show();
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
         window.Width = 900;
@@ -414,10 +452,12 @@ public sealed class OverlayMergeTests
     {
         var compact = new UsageOverlayWindow(new CompanionSettings
         {
+            OverlayDesign = OverlayDesignOptions.Previous,
             ShowCodexFiveHour = true, LabelPercentageSpacing = 0, PercentageTimeSpacing = 0
         });
         var spaced = new UsageOverlayWindow(new CompanionSettings
         {
+            OverlayDesign = OverlayDesignOptions.Previous,
             ShowCodexFiveHour = true, LabelPercentageSpacing = 128, PercentageTimeSpacing = 16
         });
         Assert.InRange(spaced.Width - compact.Width, 143.5, 144.5);
@@ -433,6 +473,7 @@ public sealed class OverlayMergeTests
     {
         var window = new UsageOverlayWindow(new CompanionSettings
         {
+            OverlayDesign = OverlayDesignOptions.Previous,
             EnableClaudeUsage = false, ShowCodexFiveHour = true
         });
         window.Show();
@@ -485,7 +526,7 @@ public sealed class OverlayMergeTests
     [Fact]
     public Task FittedWindowHasOnlyItsNormalInsetBelowStatus() => Session.Dispatch(() =>
     {
-        var window = new UsageOverlayWindow(new CompanionSettings { ShowCodexFiveHour = true });
+        var window = new UsageOverlayWindow(new CompanionSettings { OverlayDesign = OverlayDesignOptions.Previous, ShowCodexFiveHour = true });
         window.Show();
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
         window.UpdateLayout();
@@ -501,7 +542,7 @@ public sealed class OverlayMergeTests
     {
         var theme = new Avalonia.Themes.Fluent.FluentTheme();
         Application.Current!.Styles.Add(theme);
-        var window = new UsageOverlayWindow(new CompanionSettings { ShowCodexFiveHour = true });
+        var window = new UsageOverlayWindow(new CompanionSettings { OverlayDesign = OverlayDesignOptions.Previous, ShowCodexFiveHour = true });
         try
         {
             Assert.True(window.Height > 200);
@@ -519,6 +560,301 @@ public sealed class OverlayMergeTests
         {
             window.Close();
             Application.Current.Styles.Remove(theme);
+        }
+    }, CancellationToken.None);
+    [Fact]
+    public Task LatestDesignShowsProviderCardsCountdownsAndLowestBadge() => Session.Dispatch(() =>
+    {
+        var window = new UsageOverlayWindow();
+        try
+        {
+            var now = DateTimeOffset.UtcNow;
+            var sessionReset = now.AddMinutes(134).AddSeconds(-30).ToUnixTimeSeconds();
+            window.UpdateUsage(UsageProvider.Claude, new RateLimitState(
+                new RateLimitWindowState(68, 300, sessionReset),
+                new RateLimitWindowState(41, 10080, now.AddDays(3).ToUnixTimeSeconds()), null));
+            window.UpdateUsage(UsageProvider.Codex, new RateLimitState(
+                null, new RateLimitWindowState(82, 10080, null), null) { CreditBalance = "12.50" });
+            window.SetStatus(DateTimeOffset.UtcNow, null, UsageProvider.Codex);
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            var visible = window.GetVisualDescendants().OfType<TextBlock>()
+                .Where(text => text.IsEffectivelyVisible).Select(text => text.Text).ToArray();
+
+            Assert.Contains("Usage overview", visible);
+            Assert.DoesNotContain("USAGE", visible);
+            Assert.Contains("Current session", visible);
+            Assert.Contains("Current week (All)", visible);
+            Assert.Contains("Weekly limit", visible);
+            Assert.DoesNotContain("5-hour limit", visible);
+            var clock = DateTimeOffset.FromUnixTimeSeconds(sessionReset).ToLocalTime()
+                .ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture);
+            Assert.Contains($"Resets in 2h 14m · {clock}", visible);
+            Assert.Contains("Reset time unavailable", visible);
+            Assert.Contains("Credits: 12.50, Automatic reload: Disabled", visible);
+            Assert.Contains(visible, text => text?.StartsWith("Last updated at") == true);
+            // The badge names the lowest shown limit, which is Claude's weekly one.
+            var badge = window.GetVisualDescendants().OfType<Border>()
+                .Single(border => ToolTip.GetTip(border) is string tip && tip.StartsWith("Lowest remaining"));
+            Assert.True(badge.IsEffectivelyVisible);
+            Assert.Equal("Lowest remaining: Claude Current week (All), 41%", ToolTip.GetTip(badge));
+            Assert.Contains(badge.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == "41");
+            // The status line moves under the heading, so the bottom line stays hidden.
+            Assert.Single(window.GetVisualDescendants().OfType<TextBlock>(),
+                text => text.IsEffectivelyVisible && text.Text?.StartsWith("Last updated at") == true);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }, CancellationToken.None);
+
+    [Fact]
+    public Task LatestDesignPlacesPaceMarkerAndExplainsPace() => Session.Dispatch(() =>
+    {
+        var window = new UsageOverlayWindow(new CompanionSettings { EnableCodexUsage = false, ShowClaudeWeekly = false });
+        try
+        {
+            window.Show();
+            // 60% of the five-hour window has passed, so an even pace leaves 40%.
+            var reset = DateTimeOffset.UtcNow.AddMinutes(120).ToUnixTimeSeconds();
+            window.UpdateUsage(UsageProvider.Claude, new RateLimitState(
+                new RateLimitWindowState(23, 300, reset), null, null));
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            window.UpdateLayout();
+            var marker = window.GetVisualDescendants().OfType<Grid>()
+                .Single(grid => grid.IsEffectivelyVisible && ToolTip.GetTip(grid) is string tip && tip.StartsWith("Even pace"));
+            Assert.Equal("Even pace: about 40% should remain now. Your usage is running faster than pace.",
+                ToolTip.GetTip(marker));
+            var track = ((Grid)marker.Parent!).Children.OfType<Border>().First();
+            var center = marker.Margin.Left + marker.Width / 2;
+            Assert.InRange(center / track.Bounds.Width, 0.39, 0.41);
+
+            window.ApplySettings(new CompanionSettings
+            {
+                EnableCodexUsage = false, ShowClaudeWeekly = false, ShowPacePointer = false
+            }, UiText.For(UiLanguage.English));
+            Assert.False(marker.IsVisible);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }, CancellationToken.None);
+
+    [Fact]
+    public Task SwitchingDesignSwapsLayoutAndRefitsWindow() => Session.Dispatch(() =>
+    {
+        var latest = new CompanionSettings { ShowCodexFiveHour = true };
+        var window = new UsageOverlayWindow(latest);
+        try
+        {
+            window.UpdateUsage(UsageProvider.Codex, new RateLimitState(
+                new RateLimitWindowState(63, 300, 1791763260),
+                new RateLimitWindowState(94, 10080, 1792371660), null));
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            var latestSize = new Size(window.Width, window.Height);
+            Assert.Equal(420, window.Width);
+
+            window.ApplySettings(latest with { OverlayDesign = OverlayDesignOptions.Previous }, UiText.For(UiLanguage.English));
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            var texts = window.GetVisualDescendants().OfType<TextBlock>().Where(text => text.IsEffectivelyVisible).ToArray();
+            Assert.Contains(texts, text => text.Text == "USAGE");
+            Assert.DoesNotContain(texts, text => text.Text == "Usage overview");
+            Assert.NotEqual(latestSize, new Size(window.Width, window.Height));
+
+            window.ApplySettings(latest, UiText.For(UiLanguage.English));
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            Assert.Equal(latestSize, new Size(window.Width, window.Height));
+        }
+        finally
+        {
+            window.Close();
+        }
+    }, CancellationToken.None);
+
+    [Fact]
+    public Task LatestDesignShowsErrorsBelowCards() => Session.Dispatch(() =>
+    {
+        var window = new UsageOverlayWindow();
+        try
+        {
+            window.Show();
+            window.SetStatus(null, "Claude refresh failed", UsageProvider.Claude);
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            Assert.Contains(window.GetVisualDescendants().OfType<TextBlock>(),
+                text => text.Text == "Claude refresh failed" && text.IsEffectivelyVisible);
+            window.SetStatus(DateTimeOffset.UtcNow, null, UsageProvider.Claude);
+            Assert.DoesNotContain(window.GetVisualDescendants().OfType<TextBlock>(),
+                text => text.Text == "Claude refresh failed" && text.IsEffectivelyVisible);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }, CancellationToken.None);
+    [Fact]
+    public Task LatestDesignGrowsToFitUsageThatArrivesBeforeOrAfterShow() => Session.Dispatch(() =>
+    {
+        var theme = new Avalonia.Themes.Fluent.FluentTheme();
+        Application.Current!.Styles.Add(theme);
+        var early = new UsageOverlayWindow();
+        var late = new UsageOverlayWindow();
+        try
+        {
+            var state = new RateLimitState(
+                new RateLimitWindowState(23, 300, DateTimeOffset.UtcNow.AddMinutes(48).ToUnixTimeSeconds()),
+                new RateLimitWindowState(82, 10080, DateTimeOffset.UtcNow.AddDays(5).ToUnixTimeSeconds()), null)
+            {
+                CreditBalance = "0.00"
+            };
+            early.UpdateUsage(UsageProvider.Codex, state);
+            early.Show();
+            late.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            late.UpdateUsage(UsageProvider.Codex, state);
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            foreach (var window in new[] { early, late })
+            {
+                window.UpdateLayout();
+                var scroll = window.GetVisualDescendants().OfType<ScrollViewer>().Single();
+                Assert.InRange(scroll.Extent.Height - scroll.Viewport.Height, -0.5, 0.5);
+            }
+
+            // A window the user resized keeps its size when usage changes.
+            late.Height = 600;
+            late.UpdateUsage(UsageProvider.Codex, state with { CreditBalance = null });
+            Assert.Equal(600, late.Height);
+        }
+        finally
+        {
+            early.Close();
+            late.Close();
+            Application.Current.Styles.Remove(theme);
+        }
+    }, CancellationToken.None);
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public Task LatestPercentageSpansFromNameToBarBottom(bool oneRow) => Session.Dispatch(() =>
+    {
+        var window = new UsageOverlayWindow(new CompanionSettings
+        {
+            EnableCodexUsage = false, ShowClaudeWeekly = false, ResetTimeOnNameRow = oneRow
+        });
+        try
+        {
+            window.UpdateUsage(UsageProvider.Claude, new RateLimitState(
+                new RateLimitWindowState(68, 300, DateTimeOffset.UtcNow.AddMinutes(134).ToUnixTimeSeconds()), null, null));
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            window.UpdateLayout();
+            var number = window.GetVisualDescendants().OfType<FittedNumber>().Single(n => n.IsEffectivelyVisible);
+            var title = window.GetVisualDescendants().OfType<TextBlock>()
+                .Single(text => text.IsEffectivelyVisible && text.Text == "Current session");
+            var track = window.GetVisualDescendants().OfType<Border>()
+                .Single(border => border.IsEffectivelyVisible && border.Height == 6);
+            var numberTop = number.TranslatePoint(default, window)!.Value.Y;
+            var titleTop = title.TranslatePoint(default, window)!.Value.Y;
+            var trackBottom = track.TranslatePoint(new Point(0, track.Bounds.Height), window)!.Value.Y;
+
+            Assert.Equal("68", number.Text);
+            // The digits start at the name's capitals and end at the bar's bottom edge.
+            Assert.InRange(numberTop - titleTop, 2, 5);
+            Assert.InRange(numberTop + number.TargetHeight - trackBottom, -0.5, 0.5);
+            // The bar ends before the percentage column.
+            Assert.True(track.TranslatePoint(new Point(track.Bounds.Width, 0), window)!.Value.X <
+                number.TranslatePoint(default, window)!.Value.X);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }, CancellationToken.None);
+    [Fact]
+    public Task LatestCreditsHaveADividerAndPercentagesUseMonospacedDigits() => Session.Dispatch(() =>
+    {
+        var settings = new CompanionSettings { EnableClaudeUsage = false };
+        var window = new UsageOverlayWindow(settings);
+        try
+        {
+            var state = new RateLimitState(null, new RateLimitWindowState(82, 10080, null), null) { CreditBalance = "0.00" };
+            window.UpdateUsage(UsageProvider.Codex, state);
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            var credits = window.GetVisualDescendants().OfType<TextBlock>()
+                .Single(text => text.IsEffectivelyVisible && text.Text?.StartsWith("Credits:") == true);
+            var card = (StackPanel)credits.Parent!;
+            var divider = (Border)card.Children[card.Children.IndexOf(credits) - 1];
+            Assert.Equal(1, divider.Height);
+            Assert.True(divider.IsVisible);
+
+            window.UpdateUsage(UsageProvider.Codex, state with { CreditBalance = null });
+            Assert.False(credits.IsVisible);
+            Assert.False(divider.IsVisible);
+
+            var number = window.GetVisualDescendants().OfType<FittedNumber>().First(n => n.IsEffectivelyVisible);
+            Assert.Contains("monospace", number.FontFamily!.ToString());
+        }
+        finally
+        {
+            window.Close();
+        }
+    }, CancellationToken.None);
+
+    [Fact]
+    public Task HeaderBadgeFollowsTheChosenMode() => Session.Dispatch(() =>
+    {
+        var settings = new CompanionSettings { ShowCodexFiveHour = true };
+        var window = new UsageOverlayWindow(settings);
+        try
+        {
+            window.UpdateUsage(UsageProvider.Claude, new RateLimitState(
+                new RateLimitWindowState(68, 300, null), new RateLimitWindowState(41, 10080, null), null));
+            window.UpdateUsage(UsageProvider.Codex, new RateLimitState(
+                new RateLimitWindowState(23, 300, null), new RateLimitWindowState(82, 10080, null), null));
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            var badge = window.GetVisualDescendants().OfType<Border>()
+                .Single(border => ToolTip.GetTip(border) is string tip && tip.StartsWith("Lowest remaining"));
+            string Value() => badge.GetVisualDescendants().OfType<TextBlock>().First().Text!;
+            Assert.Equal("23", Value());
+
+            window.ApplySettings(settings with { HeaderBadge = HeaderBadgeOptions.Average }, UiText.For(UiLanguage.English));
+            Assert.Equal("54", Value());
+            Assert.Equal("Average remaining of 4 limits: 54%", ToolTip.GetTip(badge));
+
+            window.ApplySettings(settings with { HeaderBadge = HeaderBadgeOptions.Claude }, UiText.For(UiLanguage.English));
+            Assert.Equal("41", Value());
+            Assert.Equal("Lowest remaining: Claude Current week (All), 41%", ToolTip.GetTip(badge));
+
+            window.ApplySettings(settings with { HeaderBadge = HeaderBadgeOptions.Hidden }, UiText.For(UiLanguage.English));
+            Assert.False(badge.IsVisible);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }, CancellationToken.None);
+
+    [Fact]
+    public Task AboutLinksToTheProjectAndTheOriginalProject() => Session.Dispatch(() =>
+    {
+        var window = new SettingsWindow(new CompanionSettings { SettingsPage = SettingsPageOptions.Updates },
+            UiText.For(UiLanguage.English));
+        try
+        {
+            window.Show();
+            var links = window.GetVisualDescendants().OfType<HyperlinkButton>()
+                .Where(link => link.IsEffectivelyVisible).Select(link => link.NavigateUri!.ToString()).ToArray();
+            Assert.Equal(
+                [AppUpdateChecker.RepositoryUrl, "https://github.com/gkfriend/codex-usage-companion"],
+                links);
+        }
+        finally
+        {
+            window.Close();
         }
     }, CancellationToken.None);
 }

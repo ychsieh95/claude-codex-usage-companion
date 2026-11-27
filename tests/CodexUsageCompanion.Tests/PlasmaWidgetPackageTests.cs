@@ -88,5 +88,38 @@ public sealed class PlasmaWidgetPackageTests
         Assert.Equal("true", entries["showCodexFiveHour"]);
         Assert.Equal("true", entries["showCodexWeekly"]);
         Assert.Equal("true", entries["showPacePointer"]);
+        Assert.Equal("0", entries["badgeMode"]);
+        Assert.DoesNotContain("showLowestRemaining", entries.Keys);
+    }
+
+    [Fact]
+    public void PopupPaceMarkerIsARingedDot()
+    {
+        var usageWindow = File.ReadAllText(Path.Combine(
+            AppContext.BaseDirectory, "plasmoid", "contents", "ui", "UsageWindow.qml"));
+        var marker = usageWindow[usageWindow.IndexOf("id: paceMarker", StringComparison.Ordinal)..];
+        marker = marker[..marker.IndexOf("HoverHandler", StringComparison.Ordinal)];
+
+        Assert.Contains("radius: width / 2", marker, StringComparison.Ordinal);
+        Assert.Contains("border.color: Kirigami.Theme.backgroundColor", marker, StringComparison.Ordinal);
+        Assert.DoesNotContain("rotation: 45", marker, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void PopupBadgeModeIsConfigurableAndDrivesTheBadge()
+    {
+        var ui = Path.Combine(AppContext.BaseDirectory, "plasmoid", "contents", "ui");
+        var config = File.ReadAllText(Path.Combine(ui, "ConfigGeneral.qml"));
+        var main = File.ReadAllText(Path.Combine(ui, "main.qml"));
+        var full = File.ReadAllText(Path.Combine(ui, "FullRepresentation.qml"));
+
+        Assert.Contains("property alias cfg_badgeMode: badgeMode.currentIndex", config, StringComparison.Ordinal);
+        Assert.Contains("property int cfg_badgeModeDefault: 0", config, StringComparison.Ordinal);
+        // The five choices follow the badgeMode values 0-4 in main.xml.
+        Assert.Contains("[i18n(\"Most-used limit\"), i18n(\"Average of shown limits\"),", config, StringComparison.Ordinal);
+        Assert.Contains("readonly property var popupBadge: calculateBadge()", main, StringComparison.Ordinal);
+        Assert.Contains("Plasmoid.configuration.badgeMode", main, StringComparison.Ordinal);
+        Assert.Contains("visible: controller.popupBadge !== null", full, StringComparison.Ordinal);
+        Assert.DoesNotContain("showLowestRemaining", config + main + full, StringComparison.Ordinal);
     }
 }

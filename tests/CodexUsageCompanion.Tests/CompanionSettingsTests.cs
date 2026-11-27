@@ -411,6 +411,43 @@ public sealed class CompanionSettingsTests
     }
 
     [Fact]
+    public void SettingsFromTheSectionLayoutLoadAndOpenOnTheLastPage()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"CodexUsageCompanion.Tests.{Guid.NewGuid():N}");
+        var path = Path.Combine(directory, "settings.json");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            // Earlier versions saved which settings sections were expanded.
+            File.WriteAllText(path, """{ "settingsSections": { "usage": false }, "theme": "dark" }""");
+            var legacy = CompanionSettingsStore.Load(path);
+            Assert.Equal(SettingsPageOptions.Usage, legacy.SettingsPage);
+            Assert.Equal("dark", legacy.Theme);
+
+            File.WriteAllText(path, """{ "settingsPage": "DATETIME", "resetTimeOnNameRow": true }""");
+            var saved = CompanionSettingsStore.Load(path);
+            Assert.Equal(SettingsPageOptions.DateTime, saved.SettingsPage);
+            Assert.True(saved.ResetTimeOnNameRow);
+            Assert.Equal(SettingsPageOptions.Usage, SettingsPageOptions.Normalize("unknown"));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData(null, OverlayDesignOptions.Latest)]
+    [InlineData("latest", OverlayDesignOptions.Latest)]
+    [InlineData("Previous", OverlayDesignOptions.Previous)]
+    [InlineData("unknown", OverlayDesignOptions.Latest)]
+    public void OverlayDesignDefaultsToLatest(string? value, string expected)
+    {
+        Assert.Equal(expected, OverlayDesignOptions.Normalize(value));
+        Assert.Equal(expected, CompanionSettingsStore.Normalize(new CompanionSettings { OverlayDesign = value! }).OverlayDesign);
+    }
+
+    [Fact]
     public void CustomWindowPositionCoordinatesRoundTrip()
     {
         var directory = Path.Combine(Path.GetTempPath(), $"CodexUsageCompanion.Tests.{Guid.NewGuid():N}");

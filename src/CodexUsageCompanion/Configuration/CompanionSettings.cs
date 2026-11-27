@@ -24,7 +24,10 @@ public sealed record CompanionSettings
         SystemLanguageOptions.ResolveDefault(
             System.Globalization.CultureInfo.CurrentUICulture);
     public string Theme { get; init; } = UiThemeOptions.System;
-    public SettingsSectionState SettingsSections { get; init; } = new();
+    public string OverlayDesign { get; init; } = OverlayDesignOptions.Latest;
+    public bool ResetTimeOnNameRow { get; init; }
+    public string HeaderBadge { get; init; } = HeaderBadgeOptions.Lowest;
+    public string SettingsPage { get; init; } = SettingsPageOptions.Usage;
     public double FontScale { get; init; } = OverlayLayoutOptions.DefaultFontScale;
     public double ClaudeSessionCardHeight { get; init; } = OverlayLayoutOptions.FiveHourCardHeight;
     public double ClaudeWeeklyCardHeight { get; init; } = OverlayLayoutOptions.WeeklyCardHeight;

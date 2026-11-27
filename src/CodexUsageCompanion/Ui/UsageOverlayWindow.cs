@@ -25,6 +25,9 @@ public sealed class UsageOverlayWindow : Window
     private const double IconSize = 20;
     private const double HeaderGroupSpacing = 14;
     private const string CodexAccentColor = "#8D9BEF";
+    // Brand colors of the Latest design, shared with the Plasma widget.
+    private const string ClaudeBrandColor = "#D77655";
+    private const string CodexBrandColor = "#10A37F";
     private const string ClaudeIconBackground = "#D77655";
     private const string ClaudeIconPath =
         "M142.27 316.619l73.655-41.326 1.238-3.589-1.238-1.996-3.589-.001-12.31-.759-42.084-1.138-36.498-1.516-35.361-1.896-8.897-1.895-8.34-10.995.859-5.484 7.482-5.03 10.717.935 23.683 1.617 35.537 2.452 25.782 1.517 38.193 3.968h6.064l.86-2.451-2.073-1.517-1.618-1.517-36.776-24.922-39.81-26.338-20.852-15.166-11.273-7.683-5.687-7.204-2.451-15.721 10.237-11.273 13.75.935 3.513.936 13.928 10.716 29.749 23.027 38.848 28.612 5.687 4.727 2.275-1.617.278-1.138-2.553-4.271-21.13-38.193-22.546-38.848-10.035-16.101-2.654-9.655c-.935-3.968-1.617-7.304-1.617-11.374l11.652-15.823 6.445-2.073 15.545 2.073 6.547 5.687 9.655 22.092 15.646 34.78 24.265 47.291 7.103 14.028 3.791 12.992 1.416 3.968 2.449-.001v-2.275l1.997-26.641 3.69-32.707 3.589-42.084 1.239-11.854 5.863-14.206 11.652-7.683 9.099 4.348 7.482 10.716-1.036 6.926-4.449 28.915-8.72 45.294-5.687 30.331h3.313l3.792-3.791 15.342-20.372 25.782-32.227 11.374-12.789 13.27-14.129 8.517-6.724 16.1-.001 11.854 17.617-5.307 18.199-16.581 21.029-13.75 17.819-19.716 26.54-12.309 21.231 1.138 1.694 2.932-.278 44.536-9.479 24.062-4.347 28.714-4.928 12.992 6.066 1.416 6.167-5.106 12.613-30.71 7.583-36.018 7.204-53.636 12.689-.657.48.758.935 24.164 2.275 10.337.556h25.301l47.114 3.514 12.309 8.139 7.381 9.959-1.238 7.583-18.957 9.655-25.579-6.066-59.702-14.205-20.474-5.106-2.83-.001v1.694l17.061 16.682 31.266 28.233 39.152 36.397 1.997 8.999-5.03 7.102-5.307-.758-34.401-25.883-13.27-11.651-30.053-25.302-1.996-.001v2.654l6.926 10.136 36.574 54.975 1.895 16.859-2.653 5.485-9.479 3.311-10.414-1.895-21.408-30.054-22.092-33.844-17.819-30.331-2.173 1.238-10.515 113.261-4.929 5.788-11.374 4.348-9.478-7.204-5.03-11.652 5.03-23.027 6.066-30.052 4.928-23.886 4.449-29.674 2.654-9.858-.177-.657-2.173.278-22.37 30.71-34.021 45.977-26.919 28.815-6.445 2.553-11.173-5.789 1.037-10.337 6.243-9.2 37.257-47.392 22.47-29.371 14.508-16.961-.101-2.451h-.859l-98.954 64.251-17.618 2.275-7.583-7.103.936-11.652 3.589-3.791 29.749-20.474-.101.102.024.101z";
@@ -42,6 +45,16 @@ public sealed class UsageOverlayWindow : Window
     private Border _codexGroup = null!;
     private readonly List<TextBlock> _providerTitles = [];
     private TextBlock _headerTitle = null!;
+    private TextBlock _headerSubtitle = null!;
+    private Border _badge = null!;
+    private TextBlock _badgeValue = null!;
+    private TextBlock _badgeSign = null!;
+    private Grid _headerGrid = null!;
+    private readonly LatestProviderCard _latestClaude;
+    private readonly LatestProviderCard _latestCodex;
+    private string _design;
+    private bool _resetOnNameRow;
+    private string _headerBadge;
     private readonly TextBlock _status;
     private Button _minimizeButton = null!;
     private ToggleButton _pinButton = null!;
@@ -89,6 +102,7 @@ public sealed class UsageOverlayWindow : Window
     private int _labelPercentageSpacing = OverlayAppearanceOptions.DefaultLabelPercentageSpacing;
     private bool _fitWidthRequested = true;
     private double? _lastFittedWidth;
+    private double? _lastFittedHeight;
     private PixelPoint? _positionBeforeTrayHide;
     private OverlayThemePalette _palette = OverlayThemePalette.Dark;
 
@@ -100,6 +114,9 @@ public sealed class UsageOverlayWindow : Window
         _percentageTimeSpacing = OverlayAppearanceOptions.NormalizeSpacing(settings.PercentageTimeSpacing);
         _labelPercentageSpacing = OverlayAppearanceOptions.NormalizeLabelPercentageSpacing(settings.LabelPercentageSpacing);
         _position = WindowPosition.Normalize(settings.Position);
+        _design = OverlayDesignOptions.Normalize(settings.OverlayDesign);
+        _resetOnNameRow = settings.ResetTimeOnNameRow;
+        _headerBadge = HeaderBadgeOptions.Normalize(settings.HeaderBadge);
         _customPosition = GetCustomPosition(settings);
         _customPositionSaveTimer.Tick += (_, _) => FlushCustomPosition();
         _manualDragResetTimer.Tick += (_, _) =>
@@ -162,6 +179,11 @@ public sealed class UsageOverlayWindow : Window
         _claudeWeeklyCard = CreateCard(UsageCardKind.ClaudeWeekly, _text.ProgressWeeklyLabel, showDetails: true);
         _claudeGroup = CreateProviderGroup("Claude", CreateClaudeIcon, _claudeFiveHourCard, _claudeWeeklyCard);
         _codexGroup = CreateProviderGroup("Codex", CreateCodexIcon, _codexFiveHourCard, _codexWeeklyCard);
+        _latestClaude = new LatestProviderCard("Claude", Color.Parse(ClaudeBrandColor),
+            CreateClaudeIcon());
+        _latestCodex = new LatestProviderCard("Codex", Color.Parse(CodexBrandColor),
+            CreateCodexIcon(CodexBrandColor));
+        ApplyLatestText();
         ApplyCardVisibility();
         _status = new TextBlock
         {
@@ -173,6 +195,8 @@ public sealed class UsageOverlayWindow : Window
 
         stack.Children.Add(_claudeGroup);
         stack.Children.Add(_codexGroup);
+        stack.Children.Add(_latestClaude.Root);
+        stack.Children.Add(_latestCodex.Root);
         stack.Children.Add(_status);
         var layout = new Grid { RowDefinitions = new RowDefinitions("Auto,*") };
         var scroll = new ScrollViewer
@@ -219,6 +243,7 @@ public sealed class UsageOverlayWindow : Window
         };
         ConfigureDragArea(topDragArea);
         Content = new Grid { Children = { _root, topDragArea } };
+        ApplyDesign();
         ApplyFontScale();
         ApplyCardHeights();
         // Initialize placeholder text, configured spacing, and fitted size
@@ -239,6 +264,8 @@ public sealed class UsageOverlayWindow : Window
         {
             if (GetTrayRestorePosition() is { } savedPosition) Position = savedPosition;
             else PositionOnPrimaryScreen();
+            // Usage that arrived before the first show could not be measured then.
+            Dispatcher.UIThread.Post(RefitLatestHeight, DispatcherPriority.Loaded);
         };
         AddHandler(KeyDownEvent, HandleKeyDown, RoutingStrategies.Tunnel);
         PrepareForFirstShow();
@@ -320,7 +347,9 @@ public sealed class UsageOverlayWindow : Window
                 state?.CreditBalance,
                 state?.AutomaticReloadEnabled == true);
             ToolTip.SetTip(_codexWeeklyCard.Container, _codexWeeklyCard.Details.Text);
+            UpdateLatestCard(UsageProvider.Codex);
             FitResetColumns();
+            RefitLatestHeight();
             return;
         }
 
@@ -329,7 +358,90 @@ public sealed class UsageOverlayWindow : Window
         UpdateCard(_claudeWeeklyCard, state?.Weekly, weekly: true, dataAvailable: state is not null);
         _claudeWeeklyCard.Details.Text = _text.FormatClaudeCreditsDetails(state?.ExtraUsage);
         ToolTip.SetTip(_claudeWeeklyCard.Container, _claudeWeeklyCard.Details.Text);
+        UpdateLatestCard(UsageProvider.Claude);
         FitResetColumns();
+        RefitLatestHeight();
+    }
+
+    /// <summary>
+    /// Latest cards grow when data arrives (two-line rows, credits), so an
+    /// auto-fitted window follows them; a window the user resized keeps its size.
+    /// </summary>
+    private void RefitLatestHeight()
+    {
+        if (!IsVisible || _design != OverlayDesignOptions.Latest ||
+            _lastFittedHeight is not { } fitted || Math.Abs(Height - fitted) >= 0.5)
+            return;
+        // Text and visibility changes reach the content stack's cached size
+        // only after a layout pass.
+        UpdateLayout();
+        ApplyComputedHeight();
+    }
+
+    private void UpdateLatestCard(UsageProvider provider)
+    {
+        var claude = provider == UsageProvider.Claude;
+        var card = claude ? _latestClaude : _latestCodex;
+        var state = claude ? _lastClaudeState : _lastCodexState;
+        UpdateLatestRow(card.FiveHour, state?.FiveHour, state is not null);
+        UpdateLatestRow(card.Weekly, state?.Weekly, state is not null);
+        if (claude)
+            card.SetCredits(state?.ExtraUsage is null ? null : _text.FormatClaudeCreditsDetails(state.ExtraUsage));
+        else
+            card.SetCredits(state?.CreditBalance is null ? null
+                : _text.FormatCreditDetails(state.CreditBalance, state.AutomaticReloadEnabled == true));
+        UpdateBadge();
+    }
+
+    private void UpdateLatestRow(LatestProviderCard.LatestLimitRow row, RateLimitWindowState? state, bool dataAvailable)
+    {
+        var now = DateTimeOffset.Now;
+        if (state is null)
+        {
+            row.Reset.Text = dataAvailable ? _text.LimitUnavailable : _text.WaitingForData;
+            row.SetValue(null, SignalBrush(UsageSignal.Gray), Brush(_palette.StatusText));
+            row.SetPaceMarker(null, null);
+            return;
+        }
+
+        var remaining = Math.Clamp(state.RemainingPercent, 0, 100);
+        row.Reset.Text = state.ResetsAt is long unixSeconds
+            ? _text.FormatResetCountdown(DateTimeOffset.FromUnixTimeSeconds(unixSeconds).ToLocalTime(), now)
+            : _text.ResetUnavailable;
+        row.SetValue(remaining, SignalBrush(UsagePresentation.GetSignal(remaining)), Brush(_palette.StatusText));
+        var ratio = _showPacePointer ? UsagePresentation.GetPaceMarkerRatio(state, now) : null;
+        row.SetPaceMarker(ratio, ratio is { } expected
+            ? _text.FormatPaceTooltip((int)Math.Round(expected * 100, MidpointRounding.AwayFromZero), remaining)
+            : null);
+    }
+
+    /// <summary>The header badge shows the lowest remaining limit among the shown ones.</summary>
+    private void UpdateBadge()
+    {
+        var entries = new List<BadgeEntry>();
+        void Consider(bool shown, string provider, string limit, RateLimitWindowState? state)
+        {
+            if (shown && state is not null)
+                entries.Add(new BadgeEntry(provider, limit, state.RemainingPercent));
+        }
+
+        Consider(_claudeEnabled && _showClaudeSession, "Claude", _text.ClaudeFiveHourTitle, _lastClaudeState?.FiveHour);
+        Consider(_claudeEnabled && _showClaudeWeekly, "Claude", _text.ClaudeWeeklyTitle, _lastClaudeState?.Weekly);
+        Consider(_codexEnabled && _showCodexFiveHour, "Codex", _text.CodexFiveHourShortTitle, _lastCodexState?.FiveHour);
+        Consider(_codexEnabled && _showCodexWeekly, "Codex", _text.CodexWeeklyShortTitle, _lastCodexState?.Weekly);
+        var badge = UsagePresentation.SelectBadge(_headerBadge, entries);
+        _badge.IsVisible = _design == OverlayDesignOptions.Latest && badge is not null;
+        if (badge is null)
+            return;
+
+        var signal = SignalBrush(UsagePresentation.GetSignal(badge.RemainingPercent));
+        _badgeValue.Text = badge.RemainingPercent.ToString();
+        _badgeValue.Foreground = signal;
+        _badgeSign.Foreground = signal;
+        _badge.Background = new SolidColorBrush(signal.Color, 0.14);
+        ToolTip.SetTip(_badge, badge.Source is { } source
+            ? _text.FormatLowestRemaining(source.Provider, source.Limit, badge.RemainingPercent)
+            : _text.FormatAverageRemaining(badge.Count, badge.RemainingPercent));
     }
 
     public void SetLoading(bool loading)
@@ -346,17 +458,25 @@ public sealed class UsageOverlayWindow : Window
 
     private void RenderStatus()
     {
+        var updated = _usageStatus.UpdatedAt is { } updatedAt
+            ? _text.FormatUpdatedTime(updatedAt)
+            : _text.WaitingForData;
+        var latest = _design == OverlayDesignOptions.Latest;
+        // The Latest design shows the update time under the heading, and the
+        // bottom line only for errors.
+        _headerSubtitle.Text = updated;
+        _headerSubtitle.IsVisible = latest;
         if (!string.IsNullOrWhiteSpace(_usageStatus.Error))
         {
             _status.Text = _usageStatus.Error;
             _status.Foreground = Brush(_palette.ErrorText);
+            _status.IsVisible = true;
             return;
         }
 
-        _status.Text = _usageStatus.UpdatedAt is { } updatedAt
-            ? _text.FormatUpdatedTime(updatedAt)
-            : _text.WaitingForData;
+        _status.Text = updated;
         _status.Foreground = Brush(_palette.StatusText);
+        _status.IsVisible = !latest;
     }
 
     public void ApplySettings(CompanionSettings settings, UiText text)
@@ -384,7 +504,13 @@ public sealed class UsageOverlayWindow : Window
         _codexWeeklyCard.Title.Text = text.ProgressWeeklyLabel;
         _claudeFiveHourCard.Title.Text = text.ProgressFiveHourLabel;
         _claudeWeeklyCard.Title.Text = text.ProgressWeeklyLabel;
-        _headerTitle.Text = text.CombinedUsageHeaderTitle;
+        var design = OverlayDesignOptions.Normalize(settings.OverlayDesign);
+        _fitWidthRequested |= design != _design;
+        _design = design;
+        _resetOnNameRow = settings.ResetTimeOnNameRow;
+        _headerBadge = HeaderBadgeOptions.Normalize(settings.HeaderBadge);
+        ApplyLatestText();
+        ApplyDesign();
         ApplyFontScale();
         ApplyCardHeights();
         foreach (var kind in Enum.GetValues<UsageCardKind>()) UpdateCardResizeHint(GetCard(kind));
@@ -455,6 +581,8 @@ public sealed class UsageOverlayWindow : Window
         }
 
         WindowState = WindowState.Normal;
+        if (wasHidden)
+            Dispatcher.UIThread.Post(RefitLatestHeight, DispatcherPriority.Loaded);
         if (restorePosition is { } savedPosition)
         {
             Position = savedPosition;
@@ -602,7 +730,13 @@ public sealed class UsageOverlayWindow : Window
     private void ApplyFontScale()
     {
         foreach (var title in _providerTitles) title.FontSize = 21 * _fontScale;
-        _headerTitle.FontSize = 11 * _fontScale;
+        var latest = _design == OverlayDesignOptions.Latest;
+        _headerTitle.FontSize = (latest ? 16 : 11) * _fontScale;
+        _headerSubtitle.FontSize = 11.5 * _fontScale;
+        _badgeValue.FontSize = 13 * _fontScale;
+        _badgeSign.FontSize = 9.5 * _fontScale;
+        _latestClaude.ApplyFontScale(_fontScale);
+        _latestCodex.ApplyFontScale(_fontScale);
         _status.FontSize = 11 * _fontScale;
         foreach (var card in new[]
                  { _claudeFiveHourCard, _claudeWeeklyCard, _codexFiveHourCard, _codexWeeklyCard })
@@ -631,12 +765,39 @@ public sealed class UsageOverlayWindow : Window
 
     private void ApplyCardVisibility()
     {
+        var latest = _design == OverlayDesignOptions.Latest;
         _codexFiveHourCard.Container.IsVisible = _showCodexFiveHour && _codexEnabled;
         _codexWeeklyCard.Container.IsVisible = _showCodexWeekly && _codexEnabled;
         _claudeFiveHourCard.Container.IsVisible = _showClaudeSession && _claudeEnabled;
         _claudeWeeklyCard.Container.IsVisible = _showClaudeWeekly && _claudeEnabled;
-        _claudeGroup.IsVisible = _claudeEnabled && (_showClaudeSession || _showClaudeWeekly);
-        _codexGroup.IsVisible = _codexEnabled && (_showCodexFiveHour || _showCodexWeekly);
+        var showClaude = _claudeEnabled && (_showClaudeSession || _showClaudeWeekly);
+        var showCodex = _codexEnabled && (_showCodexFiveHour || _showCodexWeekly);
+        _claudeGroup.IsVisible = !latest && showClaude;
+        _codexGroup.IsVisible = !latest && showCodex;
+        _latestClaude.Root.IsVisible = latest && showClaude;
+        _latestCodex.Root.IsVisible = latest && showCodex;
+        _latestClaude.ApplyVisibility(_showClaudeSession, _showClaudeWeekly);
+        _latestCodex.ApplyVisibility(_showCodexFiveHour, _showCodexWeekly);
+    }
+
+    private void ApplyLatestText()
+    {
+        _latestClaude.SetResetOnNameRow(_resetOnNameRow);
+        _latestCodex.SetResetOnNameRow(_resetOnNameRow);
+        _latestClaude.ApplyText(_text, _text.ClaudeFiveHourTitle, _text.ClaudeWeeklyTitle);
+        _latestCodex.ApplyText(_text, _text.CodexFiveHourShortTitle, _text.CodexWeeklyShortTitle);
+    }
+
+    /// <summary>Switches the header between the Latest heading and the Previous caption.</summary>
+    private void ApplyDesign()
+    {
+        var latest = _design == OverlayDesignOptions.Latest;
+        _headerTitle.Text = latest ? _text.UsageOverviewTitle : _text.CombinedUsageHeaderTitle;
+        _headerTitle.LetterSpacing = latest ? 0 : 1.3;
+        _headerGrid.Height = latest ? double.NaN : 26;
+        _headerGrid.Margin = latest ? new Thickness(2, 0, 0, 4) : default;
+        RenderStatus();
+        UpdateBadge();
     }
 
     private double ComputeHeight()
@@ -661,6 +822,7 @@ public sealed class UsageOverlayWindow : Window
     private void ApplyComputedHeight()
     {
         var targetHeight = ComputeHeight();
+        _lastFittedHeight = targetHeight;
         if (Math.Abs(Height - targetHeight) < 0.5)
             return;
 
@@ -706,9 +868,10 @@ public sealed class UsageOverlayWindow : Window
 
     private Control CreateHeader()
     {
-        var grid = new Grid
+        var grid = _headerGrid = new Grid
         {
-            ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto,Auto,Auto,Auto,Auto"),
+            ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto,Auto,Auto,Auto,Auto,Auto"),
+            MinHeight = 26,
             Height = 26,
             Background = Brushes.Transparent
         };
@@ -724,43 +887,72 @@ public sealed class UsageOverlayWindow : Window
             TextTrimming = TextTrimming.CharacterEllipsis,
             VerticalAlignment = VerticalAlignment.Center
         };
+        _headerSubtitle = new TextBlock
+        {
+            FontSize = 11.5,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            IsVisible = false
+        };
+        _badgeValue = new TextBlock { FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center };
+        _badgeSign = new TextBlock { Text = "%", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(1, 2, 0, 0) };
+        _badge = new Border
+        {
+            CornerRadius = new CornerRadius(13),
+            Height = 26,
+            Padding = new Thickness(9, 0),
+            Margin = new Thickness(4, 0, 4, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            IsVisible = false,
+            Child = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                VerticalAlignment = VerticalAlignment.Center,
+                Children = { _badgeValue, _badgeSign }
+            }
+        };
+        Grid.SetColumn(_badge, 1);
 
         _shortcutsButton = HeaderButton("?", _text.ShortcutsAction);
         _shortcutsButton.Click += (_, _) => ShortcutsRequested?.Invoke(this, EventArgs.Empty);
-        Grid.SetColumn(_shortcutsButton, 1);
+        Grid.SetColumn(_shortcutsButton, 2);
 
         _pinButton = HeaderToggleButton(CreatePinIcon(), string.Empty);
         _pinButton.IsChecked = Topmost;
         _pinButton.Click += (_, _) =>
             AlwaysOnTopRequested?.Invoke(_pinButton.IsChecked == true);
         UpdatePinButton();
-        Grid.SetColumn(_pinButton, 2);
+        Grid.SetColumn(_pinButton, 3);
 
         _settingsButton = HeaderButton("⚙", _text.SettingsAction);
         _settingsButton.Click += (_, _) => SettingsRequested?.Invoke(this, EventArgs.Empty);
-        Grid.SetColumn(_settingsButton, 3);
+        Grid.SetColumn(_settingsButton, 4);
 
         _refreshButton = HeaderButton("↻", _text.RefreshAction);
         _refreshButton.Click += (_, _) => RefreshRequested?.Invoke(this, EventArgs.Empty);
-        Grid.SetColumn(_refreshButton, 4);
+        Grid.SetColumn(_refreshButton, 5);
 
         _minimizeButton = HeaderButton("−", _text.MinimizeAction);
         _minimizeButton.Click += (_, _) => WindowState = WindowState.Minimized;
         // Sets the window controls apart from the panel actions before them.
         _minimizeButton.Margin = new Thickness(HeaderGroupSpacing, 0, 0, 0);
-        Grid.SetColumn(_minimizeButton, 5);
+        Grid.SetColumn(_minimizeButton, 6);
 
         _closeButton = HeaderButton("×", CloseTooltip());
         _closeButton.Click += (_, _) => Close();
-        Grid.SetColumn(_closeButton, 6);
+        Grid.SetColumn(_closeButton, 7);
 
         var dragArea = new Border
         {
             Background = Brushes.Transparent,
-            Child = _headerTitle
+            Child = new StackPanel
+            {
+                VerticalAlignment = VerticalAlignment.Center,
+                Children = { _headerTitle, _headerSubtitle }
+            }
         };
         ConfigureDragArea(dragArea);
         grid.Children.Add(dragArea);
+        grid.Children.Add(_badge);
         grid.Children.Add(_shortcutsButton);
         grid.Children.Add(_pinButton);
         grid.Children.Add(_settingsButton);
@@ -840,13 +1032,15 @@ public sealed class UsageOverlayWindow : Window
         return new Viewbox { Width = IconSize, Height = IconSize, Child = canvas };
     }
 
-    private static Control CreateCodexIcon()
+    private static Control CreateCodexIcon() => CreateCodexIcon(CodexAccentColor);
+
+    private static Control CreateCodexIcon(string color)
     {
         var canvas = new Canvas { Width = 24, Height = 24 };
         canvas.Children.Add(new Avalonia.Controls.Shapes.Path
         {
             Data = Geometry.Parse(CodexIconPath),
-            Fill = Brush(CodexAccentColor)
+            Fill = Brush(color)
         });
         return new Viewbox { Width = IconSize, Height = IconSize, Child = canvas };
     }
@@ -1118,7 +1312,10 @@ public sealed class UsageOverlayWindow : Window
         var labelColumnWidth = Math.Ceiling(labelWidth);
         var percentageColumnWidth = Math.Ceiling(percentageWidth);
         var resetColumnWidth = Math.Min(Math.Ceiling(resetWidth), 228);
-        var targetWidth = Math.Max(280, 26 + labelColumnWidth + percentageColumnWidth + 16 + resetColumnWidth);
+        // The Latest design stacks each limit's text, so its width follows the font size only.
+        var targetWidth = _design == OverlayDesignOptions.Latest
+            ? Math.Ceiling(LatestDesignWidth * _fontScale)
+            : Math.Max(280, 26 + labelColumnWidth + percentageColumnWidth + 16 + resetColumnWidth);
         var stillAutoFitted = _lastFittedWidth is { } previousWidth && Math.Abs(Width - previousWidth) < 0.5;
         if (_fitWidthRequested || stillAutoFitted || Width < targetWidth)
         {
@@ -1182,6 +1379,9 @@ public sealed class UsageOverlayWindow : Window
 
     private void UpdatePaceMarkers()
     {
+        // Countdowns in the Latest design move with the clock as well.
+        UpdateLatestCard(UsageProvider.Claude);
+        UpdateLatestCard(UsageProvider.Codex);
         foreach (var card in new[]
                  { _claudeFiveHourCard, _claudeWeeklyCard, _codexFiveHourCard, _codexWeeklyCard })
         {
@@ -1271,6 +1471,9 @@ public sealed class UsageOverlayWindow : Window
             Color = Color.Parse(_palette.Shadow)
         });
         _headerTitle.Foreground = Brush(_palette.HeaderForeground);
+        _headerSubtitle.Foreground = Brush(_palette.StatusText);
+        _latestClaude.ApplyTheme(_palette);
+        _latestCodex.ApplyTheme(_palette);
         foreach (var group in new[] { _claudeGroup, _codexGroup })
         {
             group.Background = Brushes.Transparent;
@@ -1330,6 +1533,8 @@ public sealed class UsageOverlayWindow : Window
     };
 
     private const double PaceMarkerWidth = 10;
+    // Wide enough for the heading, the badge, and the six header buttons.
+    private const double LatestDesignWidth = 420;
 
     private static SolidColorBrush Brush(string color) => new(Color.Parse(color));
 

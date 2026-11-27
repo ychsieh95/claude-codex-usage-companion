@@ -17,19 +17,35 @@ Claude Codex Usage Companion is a local, open-source usage monitor for Claude Co
 
 This Linux version is based on [gkfriend/codex-usage-companion](https://github.com/gkfriend/codex-usage-companion). The original application uses Windows and WPF.
 
+## Panel design
+
+Under **Settings → Appearance**, select a **Design** for the panel:
+
+- **Latest** (default) matches the Plasma widget popup. Each provider has a card with a colored edge. Each limit shows its name, a reset countdown with the local reset time, and a thin bar. A large percentage on the right, in a monospaced font, is as tall as the name, reset time, and bar together. A line separates the credits from the limits. The heading shows the last update time and a badge with the lowest remaining limit. Move the pointer over the badge to see which limit it is.
+- **Previous** restores the v0.1.5 panel with the labelled 36-pixel bars.
+
+Select **OK** or **Apply** to change the design.
+
+In the latest design, **Limit rows** can show each limit's name and reset time on one row. This makes the panel shorter. By default, the reset time is on a second row below the name.
+
+The even-pace pointer appears in both designs. In the latest design, it is a dot on the bar. Move the pointer over the dot to see if you are ahead of an even pace. The two gap settings and the card resize handles apply only to the previous design.
+
 ## v0.1.3
 
 The panel uses provider headings and rounded bars based on [QuotaGem](https://github.com/gyozalab/QuotaGem). Each row shows the 5h/Weekly label, remaining percentage, and local reset time. The columns stay aligned. If you hide a provider, the panel fits its content and keeps its configured screen position. Move the pointer over a weekly bar to see credit details.
 
-Each bar has an even-pace pointer: small ticks on its top and bottom edges that mark where the bar would end if you spread usage evenly across the reset window. If the bar ends before the pointer, you are using that limit faster than an even pace. Move the pointer over the ticks to see how much of the window has passed. The expanded Plasma widget shows the same pointer on its bars. To hide it, clear **Show even-pace pointer on bars** under **Usage** in Settings, or under **Usage bars** in the widget configuration.
+Each bar has an even-pace pointer: small ticks on its top and bottom edges that mark where the bar would end if you spread usage evenly across the reset window. If the bar ends before the pointer, you are using that limit faster than an even pace. Move the pointer over the ticks to see how much of the window has passed. The latest designs of the panel and the expanded Plasma widget show it as a dot on the bar instead. To hide it, clear **Show even-pace pointer on bars** under **Usage** in Settings, or clear **Show even-pace marker** next to **Popup** in the widget configuration.
 
-Settings sections use this order: **Usage → Appearance → Window and startup → Notifications → Date and time → Logging → Updates**. Select a section title to expand or collapse it. **Expand all** and **Collapse all** control every section.
+Settings has a sidebar with these pages: **Usage → Appearance → Window and startup → Notifications → Date and time → Logging → Updates**. Select a page in the sidebar to show its settings. Each page shows a label column on the left and the controls on the right. **Window position** is on the **Window and startup** page. The version and the project links are on the **Updates** page.
 
-The app saves section expansion states when Settings closes, including after **Cancel**. It restores these states when Settings opens again or the app restarts. **Cancel** discards form changes that you have not applied.
+The app saves the selected page when Settings closes, including after **Cancel**. Settings opens on this page again, also after the app restarts. **Cancel** discards form changes that you have not applied.
 
 Under **Appearance**, set these values:
 
 - Background color: `#RRGGBB` or `#AARRGGBB`. An empty field uses the theme color.
+- Design: **Latest** or **Previous**. The default is **Latest**.
+- Limit rows: show the name and reset time of each limit on one row. The default is off. This applies only to the **Latest** design.
+- Header badge: the value in the heading badge of the **Latest** design. Select **Lowest remaining limit** (default), **Average of shown limits**, **Claude (lowest remaining)**, **Codex (lowest remaining)**, or **Hidden**.
 - Gap between the label and percentage: 0–300 pixels. The default is **128**.
 - Gap between the percentage and reset time: 0–64 pixels. The default is **16**.
 
@@ -49,13 +65,11 @@ Usage cards have 36-pixel progress bars. Weekly cards have extra space below the
 
 The app replaces unchanged 78/96-pixel default card heights with smaller heights. It keeps heights that you changed manually.
 
-The **Expand all** icon has four outward arrows. The **Collapse all** icon has four inward arrows. Move the pointer over an icon to see its tooltip.
-
 The app applies saved gaps from the first display, including while usage loads. The percentage column fits its text and spacing. Changes to either gap adjust the panel width. If you widen the panel manually, extra space appears before the percentage column. The reset-time column stays near the right edge. Preset positions use the desktop working area to avoid reserved taskbars and panels.
 
 Select **Reset to defaults** to open a **Yes/No** confirmation. Select **Yes** to restore all preferences in the settings form, including card heights and spacing. Select **No** to keep the form unchanged. Escape and closing the confirmation also keep the form unchanged.
 
-Select **OK** or **Apply** to save the reset. Select **Cancel** to discard it. Section expansion states stay the same. Changes to card height also change the height of the progress track and fill.
+Select **OK** or **Apply** to save the reset. Select **Cancel** to discard it. The selected page stays the same. Changes to card height also change the height of the progress track and fill.
 
 Before it opens, the window fits all visible cards and the status line. The bottom has only the normal inset. After the first usage result, the panel adjusts the columns that contained the waiting text. It keeps the configured gaps, which default to 128 and 16 pixels.
 
@@ -65,7 +79,7 @@ Before it opens, the window fits all visible cards and the status line. The bott
 | --- | --- | --- |
 | ![English usage overlay](assets/screenshots/overlay-en.png) | ![Traditional Chinese usage overlay](assets/screenshots/overlay-zh-tw.png) | ![Simplified Chinese usage overlay](assets/screenshots/overlay-zh-cn.png) |
 
-The panel images use sample usage data. Select a settings section title to expand it.
+The panel images use sample usage data. The settings images show the earlier layout with expandable sections.
 
 ### Settings
 
@@ -83,9 +97,12 @@ The **Yes/No** labels are centered horizontally and vertically in their buttons.
 
 ### Plasma 6 widget
 
-| Compact circles | Expanded popup |
-| --- | --- |
-| ![Plasma 6 widget compact circles](assets/screenshots/plasma-widget-circles.png) | ![Plasma 6 widget expanded popup](assets/screenshots/plasma-widget-expanded.png) |
+| Design | Panel | Expanded popup |
+| --- | --- | --- |
+| Latest (default) | ![Plasma 6 widget panel circles, latest design](assets/screenshots/plasma-widget-circles.png) | ![Plasma 6 widget expanded popup, latest design](assets/screenshots/plasma-widget-expanded.png) |
+| Previous | ![Plasma 6 widget panel circles, previous design](assets/screenshots/plasma-widget-previous-circles.png) | ![Plasma 6 widget expanded popup, previous design](assets/screenshots/plasma-widget-previous-expanded.png) |
+
+![Plasma 6 widget configuration](assets/screenshots/plasma-widget-settings.png)
 
 ## Requirements
 
@@ -289,7 +306,7 @@ Select **⚙ Settings** to configure the app. Settings includes taskbar and syst
 - **Cancel** discards changes that you have not applied.
 - **Apply** saves changes and keeps Settings open.
 
-Under **Appearance**, set a background color with `#RRGGBB` or `#AARRGGBB`. Leave the field empty to use the theme color. Set the gap between the percentage and reset time to 0–64 pixels. Set the gap between the 5h/Weekly label and percentage to 0–300 pixels. The default gaps are 16 and 128 pixels, respectively.
+Under **Appearance**, set a background color with `#RRGGBB` or `#AARRGGBB`. Leave the field empty to use the theme color. Set the gap between the percentage and reset time to 0–64 pixels. Set the gap between the 5h/Weekly label and percentage to 0–300 pixels. The default gaps are 16 and 128 pixels, respectively. The gaps apply only to the **Previous** design.
 
 The panel width adjusts to fit. Appearance changes appear immediately. Select **Cancel** to restore the last saved appearance.
 
@@ -302,9 +319,27 @@ The `.deb` installs the **Claude Codex Usage** Plasma 6 widget. For the snap or 
 3. Search for `Claude Codex Usage`.
 4. Drag the widget onto the panel or desktop.
 
-The widget shows four limits: Claude's current session and week, and Codex's five-hour and weekly limits. All four limits are enabled by default. The configuration page controls circle or bar views, the update interval, and displayed limits. The selected limits appear in the panel and expanded popup.
+The widget shows four limits: Claude's current session and week, and Codex's five-hour and weekly limits. All four limits are enabled by default. The selected limits appear in the panel and expanded popup.
 
-A wide widget arranges the indicators horizontally. A tall widget arranges them vertically. Open the widget to see local reset times, credits, update status, and errors for each provider.
+In a horizontal panel, the indicators sit side by side. In a vertical panel, they stack. Open the widget to see local reset times, credits, update status, and errors for each provider.
+
+The configuration page has these options:
+
+| Option | Values | Effect |
+| --- | --- | --- |
+| **Design** | Latest (default), Previous | Latest is the current look. Previous restores the v0.1.5 look. **Percentages**, **Panel**, **Warn below**, **Critical below**, **Popup badge**, and **Show credits** apply to the latest design only. |
+| **Style** | Radial meters, Meter strips | Circles or bars in the panel. |
+| **Update every** | 1–60 minutes | How often the widget asks the app for usage. |
+| **Percentages** | Remaining (default), Used | Shows how much of each limit is left or used. Colors always follow the remaining amount, so red means a limit is nearly used up. |
+| **On click** | Open the popup (default), Open the companion app | What clicking the widget in the panel does. |
+| **Panel** | Two checkboxes | Show only the lowest remaining (or highest used) limit instead of every selected limit, and show or hide the short labels under the panel meters. |
+| **Warn below** and **Critical below** | 1–100% left (defaults 70% and 40%) | A limit turns amber below the warning level and red below the critical level. |
+| **Reset time** | Countdown and time (default), Countdown, Time | How reset times appear in the popup and tooltip. With **Time**, resets more than a day away include the weekday. |
+| **Clock** | System default, 12-hour, 24-hour | The clock format for reset times and the last update time. |
+| **Tooltip** | Three checkboxes | Show the lowest remaining (or highest used) limit, reset times, and the last update time in the panel tooltip. |
+| **Limits** | Four checkboxes | The limits shown in the panel and popup. |
+| **Popup badge** | Most-used limit (default), Average of shown limits, Claude's most-used limit, Codex's most-used limit, Hidden | The value in the popup header badge. The most-used limit is the lowest remaining (or highest used) limit. The average covers the shown limits. Move the pointer over the badge to see what it shows. |
+| **Popup** | Two checkboxes | Show the credits line under each provider and the even-pace marker on its bars. |
 
 The widget calls the app's local `status --json` command. The app handles credentials and network access.
 
@@ -366,15 +401,10 @@ ${XDG_CONFIG_HOME:-$HOME/.config}/claude-codex-usage-companion/settings.json
   "minimizeOnStart": false,
   "language": "en-US",
   "theme": "system",
-  "settingsSections": {
-    "usage": true,
-    "appearance": true,
-    "window": true,
-    "notifications": true,
-    "dateTime": true,
-    "logging": true,
-    "updates": true
-  },
+  "overlayDesign": "latest",
+  "resetTimeOnNameRow": false,
+  "headerBadge": "lowest",
+  "settingsPage": "usage",
   "backgroundColor": "",
   "percentageTimeSpacing": 16,
   "labelPercentageSpacing": 128,
@@ -403,6 +433,12 @@ Language values are `en-US`, `zh-tw`, and `zh-cn`. On the first run, the app sel
 The app also accepts the legacy values `auto` and `en`. Letter case does not affect language matching.
 
 Theme values: `dark`, `light`, and `system`. `system` is the default and follows the desktop's current light or dark preference.
+
+Design values: `latest` and `previous`. `latest` is the default. `resetTimeOnNameRow` puts each limit's name and reset time on one row in the latest design. The default is `false`.
+
+Header badge values: `lowest`, `average`, `claude`, `codex`, and `hidden`. `lowest` is the default. `claude` and `codex` show the lowest remaining limit of that provider. `average` shows the average of the shown limits.
+
+Settings page values: `usage`, `appearance`, `window`, `notifications`, `dateTime`, `logging`, and `updates`. `settingsPage` stores the page that Settings shows when it opens. The app ignores the `settingsSections` value from earlier versions.
 
 Tray icon style values are `original`, `claude-current-session`, `claude-weekly-session`, and `codex-session`. Numeric styles show bold, anti-aliased seven-segment digits on a dark background. They do not show a percent sign. Codex session uses the five-hour limit when available. Otherwise, it uses weekly usage.
 

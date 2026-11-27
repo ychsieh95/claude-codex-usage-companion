@@ -40,8 +40,7 @@ public sealed record UiText(
     string CancelAction,
     string EnglishLanguage,
     string TraditionalChineseLanguage,
-    string SimplifiedChineseLanguage,
-    string AuthorInfo)
+    string SimplifiedChineseLanguage)
 {
     private string UpdateText(string english, string traditional, string simplified) => Language switch
     {
@@ -71,13 +70,13 @@ public sealed record UiText(
         {
             UiLanguage.TraditionalChinese => new UiText(
                 language,
-                "5 小時使用量限制",
-                "每週使用上限",
-                "等待使用量資料",
+                "5 小時用量限制",
+                "每週用量限制",
+                "等待用量資料",
                 "目前方案未提供此額度",
-                "重置時間未提供",
+                "無法取得重置時間",
                 "最小化",
-                "重新整理使用量",
+                "重新整理用量",
                 "隱藏至系統匣",
                 "顯示視窗",
                 "結束",
@@ -85,7 +84,7 @@ public sealed record UiText(
                 "設定",
                 "設定 - Claude Codex Usage Companion",
                 "啟用系統匣",
-                "開機時自動啟動",
+                "登入時自動啟動",
                 "語言",
                 "主題",
                 "深色",
@@ -105,17 +104,16 @@ public sealed record UiText(
                 "取消",
                 "English (en-US)",
                 "繁體中文 (zh-tw)",
-                "简体中文 (zh-cn)",
-                "作者：ychsieh95 • 原始專案：gkfriend/codex-usage-companion"),
+                "简体中文 (zh-cn)"),
             UiLanguage.SimplifiedChinese => new UiText(
                 language,
-                "5 小时使用量限制",
-                "每周使用上限",
-                "等待使用量数据",
+                "5 小时用量限制",
+                "每周用量限制",
+                "等待用量数据",
                 "当前方案未提供此额度",
                 "未提供重置时间",
                 "最小化",
-                "刷新使用量",
+                "刷新用量",
                 "隐藏到系统托盘",
                 "显示窗口",
                 "退出",
@@ -123,7 +121,7 @@ public sealed record UiText(
                 "设置",
                 "设置 - Claude Codex Usage Companion",
                 "启用系统托盘",
-                "开机时自动启动",
+                "登录时自动启动",
                 "语言",
                 "主题",
                 "深色",
@@ -143,8 +141,7 @@ public sealed record UiText(
                 "取消",
                 "English (en-US)",
                 "繁體中文 (zh-tw)",
-                "简体中文 (zh-cn)",
-                "作者：ychsieh95 • 原始项目：gkfriend/codex-usage-companion"),
+                "简体中文 (zh-cn)"),
             _ => new UiText(
                 language,
                 "5-hour usage limit",
@@ -181,8 +178,7 @@ public sealed record UiText(
                 "Cancel",
                 "English (en-US)",
                 "繁體中文 (zh-tw)",
-                "简体中文 (zh-cn)",
-                "Author: ychsieh95 • Original project: gkfriend/codex-usage-companion")
+                "简体中文 (zh-cn)")
         };
         return text with
         {
@@ -211,9 +207,9 @@ public sealed record UiText(
     public string FormatPaceMarkerTooltip(int elapsedPercent) => Language switch
     {
         UiLanguage.TraditionalChinese =>
-            $"平均速度指標：此週期已過 {elapsedPercent}%。若用量條在指標左側結束，代表使用速度比平均快。",
+            $"平均速度指標：此週期已過 {elapsedPercent}%。若進度條在指標左側結束，代表使用速度比平均快。",
         UiLanguage.SimplifiedChinese =>
-            $"平均速度指针：此周期已过 {elapsedPercent}%。若用量条在指针左侧结束，表示使用速度比平均快。",
+            $"平均速度指针：此周期已过 {elapsedPercent}%。若进度条在指针左侧结束，表示使用速度比平均快。",
         _ => $"Even-pace pointer: {elapsedPercent}% of this window has passed. " +
              "A bar that ends before the pointer means you are using it faster than an even pace."
     };
@@ -224,6 +220,91 @@ public sealed record UiText(
         UiLanguage.SimplifiedChinese => "在进度条上显示平均速度指针",
         _ => "Show even-pace pointer on bars"
     };
+
+    public string OverlayDesignOption => UpdateText("Design", "設計", "设计");
+    public string LatestOverlayDesign => UpdateText("Latest", "最新", "最新");
+    public string PreviousOverlayDesign => UpdateText("Previous (v0.1.5)", "舊版（v0.1.5）", "旧版（v0.1.5）");
+    public string PreviousDesignOnlyNote => UpdateText(
+        "The two gap settings apply only to the Previous design.",
+        "這兩個間距設定僅適用於舊版設計。",
+        "这两个间距设置仅适用于旧版设计。");
+    public string ResetTimeOnNameRowOption => UpdateText(
+        "Show each limit's name and reset time on one row",
+        "將每項限制的名稱與重置時間顯示在同一列",
+        "将每项限制的名称与重置时间显示在同一行");
+    public string HeaderBadgeOption => UpdateText("Header badge", "標題徽章", "标题徽章");
+    public string LowestBadgeChoice => UpdateText("Lowest remaining limit", "剩餘最少的限制", "剩余最少的限制");
+    public string AverageBadgeChoice => UpdateText("Average of shown limits", "顯示中限制的平均值", "显示中限制的平均值");
+    public string ClaudeBadgeChoice => UpdateText("Claude (lowest remaining)", "Claude（剩餘最少）", "Claude（剩余最少）");
+    public string CodexBadgeChoice => UpdateText("Codex (lowest remaining)", "Codex（剩餘最少）", "Codex（剩余最少）");
+    public string HiddenBadgeChoice => UpdateText("Hidden", "隱藏", "隐藏");
+    public string FormatAverageRemaining(int count, int remainingPercent) => UpdateText(
+        $"Average remaining of {count} limits: {remainingPercent}%",
+        $"{count} 項限制的平均剩餘：{remainingPercent}%",
+        $"{count} 项限制的平均剩余：{remainingPercent}%");
+    public string LimitRowsLabel => UpdateText("Limit rows", "限制列", "限制行");
+    public string ProvidersLabel => UpdateText("Providers", "供應商", "提供方");
+    public string SpacingLabel => UpdateText("Spacing", "間距", "间距");
+    public string SystemTrayLabel => UpdateText("System tray", "系統匣", "系统托盘");
+    public string StartupLabel => UpdateText("Startup", "啟動", "启动");
+    public string WindowLabel => UpdateText("Window", "視窗", "窗口");
+    public string AlertsLabel => UpdateText("Alerts", "通知", "通知");
+    public string ProjectLinkLabel => UpdateText("Project:", "專案：", "项目：");
+    public string OriginalProjectLinkLabel => UpdateText("Original project:", "原始專案：", "原始项目：");
+    public string AboutLabel => UpdateText("About", "關於", "关于");
+    public string UsageOverviewTitle =>UpdateText("Usage overview", "用量概覽", "用量概览");
+    public string RemainingCaption => UpdateText("REMAINING", "剩餘", "剩余");
+    public string CodexFiveHourShortTitle => UpdateText("5-hour limit", "5 小時限制", "5 小时限制");
+    public string CodexWeeklyShortTitle => UpdateText("Weekly limit", "每週限制", "每周限制");
+
+    /// <summary>A reset countdown with the local reset time, such as "Resets in 2h 14m · 16:23".</summary>
+    public string FormatResetCountdown(DateTimeOffset localReset, DateTimeOffset now)
+    {
+        var untilReset = localReset - now;
+        var duration = FormatDuration(untilReset);
+        // The countdown already gives the day, so a reset within a day needs only its time.
+        var when = untilReset < TimeSpan.FromDays(1)
+            ? localReset.ToString("HH:mm", CultureInfo.InvariantCulture)
+            : FormatDateTime(localReset, ResetDateTimeFormat);
+        return UpdateText($"Resets in {duration} · {when}", $"{duration}後重置 · {when}", $"{duration}后重置 · {when}");
+    }
+
+    public string FormatDuration(TimeSpan duration)
+    {
+        var minutes = Math.Max(0, (int)Math.Ceiling(duration.TotalMinutes));
+        var days = minutes / 1440;
+        var hours = minutes % 1440 / 60;
+        var mins = minutes % 60;
+        if (days > 0)
+            return hours > 0
+                ? UpdateText($"{days}d {hours}h", $"{days} 天 {hours} 小時", $"{days} 天 {hours} 小时")
+                : UpdateText($"{days}d", $"{days} 天", $"{days} 天");
+        if (hours > 0)
+            return mins > 0
+                ? UpdateText($"{hours}h {mins}m", $"{hours} 小時 {mins} 分", $"{hours} 小时 {mins} 分")
+                : UpdateText($"{hours}h", $"{hours} 小時", $"{hours} 小时");
+        return UpdateText(minutes == 1 ? "1 minute" : $"{minutes} minutes", $"{minutes} 分鐘", $"{minutes} 分钟");
+    }
+
+    /// <summary>The pace tooltip of the Latest design, comparing the remaining share with an even pace.</summary>
+    public string FormatPaceTooltip(int expectedRemainingPercent, int remainingPercent)
+    {
+        var delta = remainingPercent - expectedRemainingPercent;
+        var pace = Math.Abs(delta) < 3
+            ? UpdateText("on pace", "符合平均速度", "符合平均速度")
+            : delta > 0
+                ? UpdateText("ahead of pace", "比平均速度慢", "比平均速度慢")
+                : UpdateText("running faster than pace", "比平均速度快", "比平均速度快");
+        return UpdateText(
+            $"Even pace: about {expectedRemainingPercent}% should remain now. Your usage is {pace}.",
+            $"平均速度：目前應剩餘約 {expectedRemainingPercent}%。你的使用速度{pace}。",
+            $"平均速度：目前应剩余约 {expectedRemainingPercent}%。你的使用速度{pace}。");
+    }
+
+    public string FormatLowestRemaining(string provider, string limit, int remainingPercent) => UpdateText(
+        $"Lowest remaining: {provider} {limit}, {remainingPercent}%",
+        $"剩餘最少：{provider} {limit}，{remainingPercent}%",
+        $"剩余最少：{provider} {limit}，{remainingPercent}%");
 
     public string EnableCodexUsageOption => Language switch
     {
@@ -332,7 +413,7 @@ public sealed record UiText(
 
     public string ApplyAction => Language switch
     {
-        UiLanguage.TraditionalChinese => "應用",
+        UiLanguage.TraditionalChinese => "套用",
         UiLanguage.SimplifiedChinese => "应用",
         _ => "Apply"
     };
@@ -416,14 +497,14 @@ public sealed record UiText(
 
     public string ShortcutsAction => Language switch
     {
-        UiLanguage.TraditionalChinese => "鍵盤快捷鍵",
+        UiLanguage.TraditionalChinese => "鍵盤快速鍵",
         UiLanguage.SimplifiedChinese => "键盘快捷键",
         _ => "Keyboard shortcuts"
     };
 
     public string ShortcutsTitle => Language switch
     {
-        UiLanguage.TraditionalChinese => "鍵盤快捷鍵 - Claude Codex Usage Companion",
+        UiLanguage.TraditionalChinese => "鍵盤快速鍵 - Claude Codex Usage Companion",
         UiLanguage.SimplifiedChinese => "键盘快捷键 - Claude Codex Usage Companion",
         _ => "Keyboard shortcuts - Claude Codex Usage Companion"
     };
@@ -444,7 +525,7 @@ public sealed record UiText(
 
     public string ShowShortcutsShortcut => Language switch
     {
-        UiLanguage.TraditionalChinese => "顯示鍵盤快捷鍵",
+        UiLanguage.TraditionalChinese => "顯示鍵盤快速鍵",
         UiLanguage.SimplifiedChinese => "显示键盘快捷键",
         _ => "Show keyboard shortcuts"
     };
@@ -560,30 +641,19 @@ public sealed record UiText(
         _ => "Reset to defaults"
     };
 
-    public string ExpandAllAction => Language switch
-    {
-        UiLanguage.TraditionalChinese => "全部展開",
-        UiLanguage.SimplifiedChinese => "全部展开",
-        _ => "Expand all"
-    };
-
-    public string CollapseAllAction => Language switch
-    {
-        UiLanguage.TraditionalChinese => "全部收合",
-        UiLanguage.SimplifiedChinese => "全部折叠",
-        _ => "Collapse all"
-    };
-
     public string BackgroundColorOption => Language switch
     {
-        UiLanguage.TraditionalChinese => "背景顏色（#RRGGBB 或 #AARRGGBB）",
-        UiLanguage.SimplifiedChinese => "背景颜色（#RRGGBB 或 #AARRGGBB）",
-        _ => "Background color (#RRGGBB or #AARRGGBB)"
+        UiLanguage.TraditionalChinese => "背景顏色",
+        UiLanguage.SimplifiedChinese => "背景颜色",
+        _ => "Background color"
     };
+
+    public string BackgroundColorFormatHint => UpdateText(
+        "Use #RRGGBB or #AARRGGBB.", "格式為 #RRGGBB 或 #AARRGGBB。", "格式为 #RRGGBB 或 #AARRGGBB。");
 
     public string ThemeDefaultColor => Language switch
     {
-        UiLanguage.TraditionalChinese => "留白以使用佈景主題預設顏色",
+        UiLanguage.TraditionalChinese => "留白以使用主題顏色",
         UiLanguage.SimplifiedChinese => "留空以使用主题默认颜色",
         _ => "Leave blank to use the theme color"
     };
@@ -659,8 +729,8 @@ public sealed record UiText(
         {
             return Language switch
             {
-                UiLanguage.TraditionalChinese => "使用點數：--, 自動加購：--",
-                UiLanguage.SimplifiedChinese => "使用点数：--, 自动加购：--",
+                UiLanguage.TraditionalChinese => "使用點數：--，自動加購：--",
+                UiLanguage.SimplifiedChinese => "使用点数：--，自动加购：--",
                 _ => "Usage credits: --, Auto-reload: --"
             };
         }
@@ -669,8 +739,8 @@ public sealed record UiText(
         {
             return Language switch
             {
-                UiLanguage.TraditionalChinese => "使用點數：--, 自動加購：已停用",
-                UiLanguage.SimplifiedChinese => "使用点数：--, 自动加购：已禁用",
+                UiLanguage.TraditionalChinese => "使用點數：--，自動加購：已停用",
+                UiLanguage.SimplifiedChinese => "使用点数：--，自动加购：已禁用",
                 _ => "Usage credits: --, Auto-reload: Disabled"
             };
         }
@@ -678,8 +748,8 @@ public sealed record UiText(
         var credits = FormatClaudeCreditsAmount(extraUsage);
         return Language switch
         {
-            UiLanguage.TraditionalChinese => $"使用點數：{credits}, 自動加購：已啟用",
-            UiLanguage.SimplifiedChinese => $"使用点数：{credits}, 自动加购：已启用",
+            UiLanguage.TraditionalChinese => $"使用點數：{credits}，自動加購：已啟用",
+            UiLanguage.SimplifiedChinese => $"使用点数：{credits}，自动加购：已启用",
             _ => $"Usage credits: {credits}, Auto-reload: Enabled"
         };
     }
@@ -744,9 +814,9 @@ public sealed record UiText(
         return Language switch
         {
             UiLanguage.TraditionalChinese =>
-                $"點數：{balance}, 自動儲值：{(automaticReloadEnabled ? "已啟用" : "已停用")}",
+                $"點數：{balance}，自動儲值：{(automaticReloadEnabled ? "已啟用" : "已停用")}",
             UiLanguage.SimplifiedChinese =>
-                $"点数：{balance}, 自动充值：{(automaticReloadEnabled ? "已启用" : "已禁用")}",
+                $"点数：{balance}，自动充值：{(automaticReloadEnabled ? "已启用" : "已禁用")}",
             _ =>
                 $"Credits: {balance}, Automatic reload: {(automaticReloadEnabled ? "Enabled" : "Disabled")}"
         };

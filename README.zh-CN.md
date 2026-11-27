@@ -12,24 +12,40 @@ Claude Codex Usage Companion 是一款在 Linux 上运行的本地开源 Claude 
 - Claude Code 和 Codex 用量显示在同一面板。两者默认均启用，可在设置中分别禁用。
 - 英文、繁体中文和简体中文用量文字。
 - 语言、主题、窗口位置、警报、通知、日志、图标、自动启动和窗口行为设置。
-- 四种系统托盘图标样式：原始图标、Claude 会话剩余用量、Claude 每周剩余用量和 Codex 会话剩余用量。
+- 四种系统托盘图标样式：原始图标、Claude 当前会话剩余用量、Claude 每周会话剩余用量和 Codex 会话剩余用量。
 - 不含遥测。程序会在原始文件中更新现有 Claude 凭据，且不会将 token 写入日志。
 
 此 Linux 移植版基于 [gkfriend/codex-usage-companion](https://github.com/gkfriend/codex-usage-companion)。原始实现以 Windows/WPF 为目标。
 
+## 面板设计
+
+在**设置 → 外观**中，选择面板的**设计**：
+
+- **最新**（默认）与 Plasma 小部件的弹出窗口一致。每个提供方各有一张带彩色边缘的卡片。每项限制显示名称、重置倒计时与本机重置时间、以及细进度条。右侧的大号百分比使用等宽字体，与名称、重置时间及进度条合计等高。点数信息上方以分隔线与限制隔开。标题栏显示最后更新时间，以及显示剩余最少限制的徽章。将指针移到徽章上可查看是哪一项限制。
+- **旧版**还原 v0.1.5 面板，使用带标签的 36 像素进度条。
+
+选择**确定**或**应用**以更改设计。
+
+在最新设计中，**限制行**可将每项限制的名称与重置时间显示在同一行，使面板更矮。默认会将重置时间显示在名称下方的第二行。
+
+两种设计都显示平均速度指针。在最新设计中，指针是进度条上的圆点。将鼠标指针移到圆点上可查看使用速度是否低于平均速度。两个间距设置与卡片高度调整控点仅适用于旧版设计。
+
 ## v0.1.3
 
-面板采用参考 [QuotaGem](https://github.com/gyozalab/QuotaGem) 的提供方标题和圆角进度条。每行显示 5h／每周标签、剩余百分比和本地重置时间，各列保持对齐。隐藏提供方时，面板会根据内容调整大小，并保留设置的屏幕位置。将鼠标指针移至每周进度条可查看点数信息。
+面板采用以 [QuotaGem](https://github.com/gyozalab/QuotaGem) 为参考的提供方标题和圆角进度条。每行显示 5h／每周标签、剩余百分比和本地重置时间，各列保持对齐。隐藏提供方时，面板会根据内容调整大小，并保留设置的屏幕位置。将鼠标指针移至每周进度条可查看点数信息。
 
-每个进度条都有平均速度指针：上下边缘的小三角形标出平均使用整个重置周期时，进度条应该停在的位置。若进度条在指针左侧结束，表示该用量限制的使用速度比平均快。将鼠标指针移至指针可查看此周期已过的比例。展开的 Plasma 小部件进度条也会显示相同指针。若要隐藏，请在设置的**用量**区块或小部件设置的 **Usage bars** 区块取消勾选**在进度条上显示平均速度指针**。
+每个进度条都有平均速度指针：上下边缘的小刻度标出平均使用整个重置周期时，进度条应该停在的位置。若进度条在指针左侧结束，表示该用量限制的使用速度比平均快。将鼠标指针移至指针可查看此周期已过的比例。面板与展开的 Plasma 小部件在最新设计中改以进度条上的圆点显示此指针。若要隐藏，请在设置的**用量**页面取消勾选**在进度条上显示平均速度指针**，或在小部件设置的 **Popup** 旁取消勾选 **Show even-pace marker**。
 
-设置分组按此顺序排列：**用量 → 外观 → 窗口与启动 → 通知 → 日期与时间 → 日志 → 更新**。点击分组标题可展开或折叠。**全部展开**和**全部折叠**可控制所有分组。
+设置窗口左侧有侧边栏，包含以下页面：**用量 → 外观 → 窗口与启动 → 通知 → 日期与时间 → 日志 → 更新**。在侧边栏点击页面即可显示其设置。每个页面左侧为标签栏，右侧为控件。**窗口位置**位于**窗口与启动**页面。版本与项目链接位于**更新**页面。
 
-关闭设置时，程序会保存各分组的展开状态，点击**取消**也会保留。重新打开设置或重启程序时，会恢复这些状态。**取消**会丢弃尚未应用的表单更改。
+关闭设置时，程序会保存当前选中的页面，点击**取消**也会保留。重新打开设置时（包括重启程序后），会回到此页面。**取消**会丢弃尚未应用的表单更改。
 
 在**外观**中设置以下项目：
 
 - 背景颜色：`#RRGGBB` 或 `#AARRGGBB`。留空使用主题颜色。
+- 设计：**最新**或**旧版**，默认 **最新**。
+- 限制行：将每项限制的名称与重置时间显示在同一行，默认关闭。仅适用于**最新**设计。
+- 标题徽章：**最新**设计标题栏徽章显示的值。可选**剩余最少的限制**（默认）、**显示中限制的平均值**、**Claude（剩余最少）**、**Codex（剩余最少）**或**隐藏**。
 - 标签与百分比间距：0–300 像素，默认 **128**。
 - 百分比与重置时间间距：0–64 像素，默认 **16**。
 
@@ -49,13 +65,11 @@ Claude Codex Usage Companion 是一款在 Linux 上运行的本地开源 Claude 
 
 程序会将未更改的 78／96 像素默认卡片高度改为较小高度。手动调整过的高度会保留。
 
-**全部展开**图标是四个向外箭头。**全部折叠**图标是四个向内箭头。将鼠标指针移至图标可查看提示。
-
 程序从首次显示起就会应用已保存的间距，包括加载用量时。百分比列会根据文字和间距调整宽度。更改任一间距都会调整面板宽度。手动加宽面板时，多余空间会放在百分比列前方。重置时间列仍靠近右侧。预设位置使用桌面工作区域，避免覆盖保留空间的任务栏和面板。
 
 点击**恢复默认值**可打开**是／否**确认窗口。点击**是**会恢复设置表单中的所有偏好，包括卡片高度和间距。点击**否**会保留表单不变。按 Escape 或关闭确认窗口也会保留表单不变。
 
-点击**确定**或**应用**可保存恢复结果。点击**取消**可丢弃恢复结果。分组展开状态会保留。更改卡片高度时，进度条轨道和填充区域的高度也会改变。
+点击**确定**或**应用**可保存恢复结果。点击**取消**可丢弃恢复结果。当前选中的页面会保留。更改卡片高度时，进度条轨道和填充区域的高度也会改变。
 
 窗口打开前会根据所有可见卡片和状态行调整大小。底部仅保留正常内边距。首次获取用量结果后，面板会调整原先显示等待文字的列宽。设置的间距会保留，默认为 128 和 16 像素。
 
@@ -65,7 +79,7 @@ Claude Codex Usage Companion 是一款在 Linux 上运行的本地开源 Claude 
 | --- | --- | --- |
 | ![英文用量面板](assets/screenshots/overlay-en.png) | ![繁体中文用量面板](assets/screenshots/overlay-zh-tw.png) | ![简体中文用量面板](assets/screenshots/overlay-zh-cn.png) |
 
-用量面板图片使用示例数据。点击设置分组的标题即可展开内容。
+用量面板图片使用示例数据。设置图片显示先前可展开分组的布局。
 
 ### 设置
 
@@ -83,9 +97,12 @@ Claude Codex Usage Companion 是一款在 Linux 上运行的本地开源 Claude 
 
 ### Plasma 6 小组件
 
-| 紧凑圆环 | 展开弹出窗口 |
-| --- | --- |
-| ![Plasma 6 小组件紧凑圆环](assets/screenshots/plasma-widget-circles.png) | ![Plasma 6 小组件展开弹出窗口](assets/screenshots/plasma-widget-expanded.png) |
+| 设计 | 面板 | 展开弹出窗口 |
+| --- | --- | --- |
+| 最新（默认） | ![Plasma 6 小组件面板圆环（最新设计）](assets/screenshots/plasma-widget-circles.png) | ![Plasma 6 小组件展开弹出窗口（最新设计）](assets/screenshots/plasma-widget-expanded.png) |
+| 先前 | ![Plasma 6 小组件面板圆环（先前设计）](assets/screenshots/plasma-widget-previous-circles.png) | ![Plasma 6 小组件展开弹出窗口（先前设计）](assets/screenshots/plasma-widget-previous-expanded.png) |
+
+![Plasma 6 小组件设置](assets/screenshots/plasma-widget-settings.png)
 
 ## 系统要求
 
@@ -100,7 +117,7 @@ Claude Codex Usage Companion 是一款在 Linux 上运行的本地开源 Claude 
 sudo apt install libx11-6 libice6 libsm6 libfontconfig1 libharfbuzz0b fonts-noto-cjk libnotify-bin
 ```
 
-Release 软件包为自包含软件包，无需另外安装 .NET runtime。
+发布的软件包已包含 .NET runtime，无需另行安装。
 
 ## 安装并验证 Codex CLI
 
@@ -142,7 +159,7 @@ codex app-server --help >/dev/null && echo "Codex app-server is available"
 
 如果不使用 Claude Code，请在设置中取消勾选**启用 Claude 用量显示**。也可在 `settings.json` 中设置 `"enableClaudeUsage": false`。**启用 Codex 用量显示**复选框以同样方式控制 Codex。
 
-Claude Code 没有官方用量 API。程序会读取 Claude Code 保存在本地的 OAuth access token，并用它调用 Anthropic 未公开文档说明的用量端点。
+Claude Code 没有官方用量 API。程序会读取 Claude Code 保存在本地的 OAuth access token，并用它调用 Anthropic 未公开的用量端点。
 
 Access token 的有效期只有数小时。Claude CLI 只会在运行时更新它。电脑重启后，保存的 token 通常已过期。
 
@@ -150,7 +167,7 @@ Access token 的有效期只有数小时。Claude CLI 只会在运行时更新�
 
 如果 refresh token 已过期或被撤销，程序会显示错误。请运行 `claude` 重新登录。
 
-未公开文档说明的端点可能随时更改。无论更新间隔设置为何，程序最多每 180 秒查询一次 Claude 用量。
+未公开的端点可能随时更改。无论更新间隔设置为何，程序最多每 180 秒查询一次 Claude 用量。
 
 程序会在 `~/.local/bin`、`~/.npm-global/bin` 和 `~/.claude/local` 搜索 Claude CLI。如果凭据文件或 CLI 位于其他位置，请设置对应变量：
 
@@ -159,7 +176,7 @@ Access token 的有效期只有数小时。Claude CLI 只会在运行时更新�
 
 ## 安装
 
-从[最新版本](https://github.com/ychsieh95/claude-codex-usage-companion/releases/latest)下载文件。选择一种软件包安装程序。Plasma 小组件包和 Codex plugin 为可选项。
+从[最新版本](https://github.com/ychsieh95/claude-codex-usage-companion/releases/latest)下载文件。为程序选择一种软件包。Plasma 小组件包和 Codex plugin 为可选项。
 
 | 软件包 | 需要 root | 菜单项 | Plasma 小组件 | 适用情况 |
 | --- | --- | --- | --- | --- |
@@ -289,7 +306,7 @@ claude-codex-usage-companion gui
 - **取消**会丢弃尚未应用的更改。
 - **应用**会保存更改并保持设置打开。
 
-在**外观**中，使用 `#RRGGBB` 或 `#AARRGGBB` 设置背景颜色。留空使用主题颜色。百分比与重置时间间距可设为 0–64 像素。5h／每周标签与百分比间距可设为 0–300 像素。两者默认分别为 16 和 128 像素。
+在**外观**中，使用 `#RRGGBB` 或 `#AARRGGBB` 设置背景颜色。留空使用主题颜色。百分比与重置时间间距可设为 0–64 像素。5h／每周标签与百分比间距可设为 0–300 像素。两者默认分别为 16 和 128 像素。这两个间距仅适用于**旧版**设计。
 
 面板宽度会自动配合调整。外观更改会立即显示。点击**取消**可恢复上次保存的外观。
 
@@ -302,13 +319,31 @@ claude-codex-usage-companion gui
 3. 搜索 `Claude Codex Usage`。
 4. 将小组件拖到面板或桌面。
 
-小组件显示四种用量限制：Claude 当前会话和本周用量，以及 Codex 5 小时和每周用量。四者默认均启用。设置页面可控制圆形或条形视图、更新间隔及显示的限制。选中的限制会显示在面板和展开的弹窗中。
+小组件显示四种用量限制：Claude 当前会话和本周用量，以及 Codex 5 小时和每周用量。四者默认均启用。选中的限制会显示在面板和展开的弹出窗口中。
 
-较宽的小组件会水平排列指示器，较高的小组件则会垂直排列。打开小组件可查看本地重置时间、点数、更新状态和各提供方的错误。
+在水平面板中，指示器会并排显示；在垂直面板中则会上下堆叠。打开小组件可查看本地重置时间、点数、更新状态和各提供方的错误。
+
+设置页面（英文界面）提供以下选项：
+
+| 选项 | 值 | 效果 |
+| --- | --- | --- |
+| **Design** | Latest（默认）、Previous | Latest 为当前外观，Previous 恢复 v0.1.5 的外观。**Percentages**、**Panel**、**Warn below**、**Critical below**、**Popup badge** 和 **Show credits** 仅适用于最新设计。 |
+| **Style** | Radial meters、Meter strips | 面板中显示圆环或条形。 |
+| **Update every** | 1–60 分钟 | 小组件向程序查询用量的频率。 |
+| **Percentages** | Remaining（默认）、Used | 显示各限制的剩余或已用比例。颜色始终按剩余量决定，因此红色表示该限制即将用完。 |
+| **On click** | Open the popup（默认）、Open the companion app | 点击面板上的小组件时执行的操作。 |
+| **Panel** | 两个复选框 | 只显示剩余最少（或已用最多）的限制而非所有选中的限制，以及显示或隐藏面板指示器下方的简短标签。 |
+| **Warn below** 和 **Critical below** | 剩余 1–100%（默认 70% 和 40%） | 限制低于警告值时显示琥珀色，低于严重值时显示红色。 |
+| **Reset time** | Countdown and time（默认）、Countdown、Time | 弹出窗口和提示中重置时间的显示方式。选择 **Time** 时，超过一天后才重置会加上星期。 |
+| **Clock** | System default、12-hour、24-hour | 重置时间和最后更新时间的时钟格式。 |
+| **Tooltip** | 三个复选框 | 在面板提示中显示剩余最少（或已用最多）的限制、重置时间和最后更新时间。 |
+| **Limits** | 四个复选框 | 面板和弹出窗口中显示的限制。 |
+| **Popup badge** | Most-used limit（默认）、Average of shown limits、Claude's most-used limit、Codex's most-used limit、Hidden | 弹出窗口标题徽章显示的值。用量最多的限制即剩余最少（或已用最多）的限制。平均值涵盖显示中的限制。将鼠标指针移到徽章上可查看显示内容。 |
+| **Popup** | 两个复选框 | 显示各提供方下方的点数信息，以及进度条上的平均速度指针。 |
 
 小组件会调用程序的本地 `status --json` 命令。凭据和网络访问由程序处理。
 
-使用开发 checkout 时，可运行 `bash scripts/install-plasma-widget.sh` 安装或更新当前源码包。Companion CLI 必须保持安装并可从 `PATH` 运行。
+使用开发版源码时，可运行 `bash scripts/install-plasma-widget.sh` 安装或更新当前源码包。Companion CLI 必须保持安装并可从 `PATH` 运行。
 
 ## CLI
 
@@ -366,15 +401,10 @@ ${XDG_CONFIG_HOME:-$HOME/.config}/claude-codex-usage-companion/settings.json
   "minimizeOnStart": false,
   "language": "en-US",
   "theme": "system",
-  "settingsSections": {
-    "usage": true,
-    "appearance": true,
-    "window": true,
-    "notifications": true,
-    "dateTime": true,
-    "logging": true,
-    "updates": true
-  },
+  "overlayDesign": "latest",
+  "resetTimeOnNameRow": false,
+  "headerBadge": "lowest",
+  "settingsPage": "usage",
   "backgroundColor": "",
   "percentageTimeSpacing": 16,
   "labelPercentageSpacing": 128,
@@ -403,6 +433,12 @@ ${XDG_CONFIG_HOME:-$HOME/.config}/claude-codex-usage-companion/settings.json
 程序也接受旧版值 `auto` 和 `en`。语言值匹配不区分大小写。
 
 主题值：`dark`、`light`、`system`。`system` 是默认值，会跟随桌面当前的浅色或深色偏好设置。
+
+设计值：`latest` 和 `previous`。`latest` 是默认值。`resetTimeOnNameRow` 会在最新设计中将每项限制的名称与重置时间显示在同一行，默认为 `false`。
+
+标题徽章值：`lowest`、`average`、`claude`、`codex`、`hidden`。`lowest` 是默认值。`claude` 和 `codex` 显示该提供方剩余最少的限制。`average` 显示显示中限制的平均值。
+
+设置页面值：`usage`、`appearance`、`window`、`notifications`、`dateTime`、`logging`、`updates`。`settingsPage` 保存设置窗口打开时显示的页面。程序会忽略旧版的 `settingsSections` 值。
 
 系统托盘图标样式值为 `original`、`claude-current-session`、`claude-weekly-session` 和 `codex-session`。数字样式会在深色背景上显示粗体、抗锯齿的七段显示器数字，并且不显示百分号。Codex 会话会优先使用 5 小时窗口，若未提供则改用每周用量。
 
@@ -439,7 +475,7 @@ ${XDG_CONFIG_HOME:-$HOME/.config}/claude-codex-usage-companion/settings.json
 - 边距：`0`–`64` 像素。
 - 更新间隔：`60`–`3600` 秒。
 
-`enableClaudeUsage` 和 `enableCodexUsage` 分别控制各提供方，默认均为 `true`。禁用提供方会隐藏其区块，并停止用量查询。面板高度会自动调整。
+`enableClaudeUsage` 和 `enableCodexUsage` 分别控制各提供方，默认均为 `true`。禁用提供方会隐藏其区域，并停止用量查询。面板高度会自动调整。
 
 无论更新间隔设置为何，Claude 用量最多每 180 秒查询一次。请参阅[启用 Claude 用量（可选）](#启用-claude-用量可选)。
 
@@ -530,7 +566,7 @@ GUI 使用 `XDG_RUNTIME_DIR` 下仅限所有者访问的 Unix socket。此 socke
 
 在提供 XWayland 的 Wayland 桌面中，程序使用 Avalonia 的 X11 兼容后端。设置的位置会控制初始窗口位置和后续位置更改。如果只有原生 Wayland，合成器会控制位置，并可能忽略此设置。X11 会话使用 X11 后端。
 
-拖动标题栏可移动面板。拖动右下角可调整大小。卡片和用量条会随宽度调整。窗口较矮时可滚动。
+拖动标题栏可移动面板。拖动右下角可调整大小。卡片和进度条会随宽度调整。窗口较矮时可滚动。
 
 标题栏控件依次为键盘快捷键、固定、设置、刷新、最小化和关闭。最小化和关闭控件之间有较宽的间距。固定按钮控制始终置顶设置。设置和系统托盘菜单中的**窗口始终置顶**复选框也控制同一设置。
 
@@ -543,7 +579,7 @@ Claude 的**当前会话**和**本周用量（全部）**卡片会显示在 Code
 系统托盘菜单包含以下操作，并以分隔线分组：
 
 - **显示窗口**
-- **刷新使用量**
+- **刷新用量**
 - **窗口始终置顶**
 - **登录时自动启动**
 - **设置**
@@ -564,7 +600,7 @@ Claude 的**当前会话**和**本周用量（全部）**卡片会显示在 Code
 
 在**设置 → 外观**中，拖动**面板字体大小**（80–150%）可查看文字大小。点击**应用**或**确定**保存。鼠标指针移至右下角时，会显示窗口缩放标记。
 
-程序从本地 `codex app-server` 进程读取 `account/rateLimits/read`。未来 Codex 版本如果更改此 API，可能需要更新程序。Claude 用量使用 Anthropic 未公开文档说明的端点，可能随时更改。请参阅[启用 Claude 用量（可选）](#启用-claude-用量可选)。
+程序从本地 `codex app-server` 进程读取 `account/rateLimits/read`。未来 Codex 版本如果更改此 API，可能需要更新程序。Claude 用量使用 Anthropic 未公开的端点，可能随时更改。请参阅[启用 Claude 用量（可选）](#启用-claude-用量可选)。
 
 ## 文档写作规范
 

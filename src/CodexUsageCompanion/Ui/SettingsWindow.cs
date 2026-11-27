@@ -39,6 +39,8 @@ public sealed class SettingsWindow : Window
     private readonly CheckBox _usageLogging;
     private readonly ComboBox _language;
     private readonly ComboBox _theme;
+    private readonly ComboBox _overlayDesign;
+    private readonly TextBlock _previousDesignNote;
     private readonly Slider _fontSizeSlider;
     private readonly TextBlock _fontSizeValue;
     private readonly TextBlock _fontSizePreview;
@@ -61,17 +63,42 @@ public sealed class SettingsWindow : Window
     private bool _discardPromptOpen;
     private bool _resettingDefaults;
     private bool _resetPromptOpen;
-    private readonly Dictionary<string, Expander> _sections = [];
+    private readonly CheckBox _resetTimeOnNameRow;
+    private readonly ComboBox _headerBadge;
+    private readonly Dictionary<string, Control> _pages = [];
+    private readonly ListBox _sidebar = new()
+    {
+        Background = Brushes.Transparent,
+        SelectionMode = SelectionMode.Single | SelectionMode.AlwaysSelected
+    };
+
+    private const string OriginalProjectUrl = "https://github.com/gkfriend/codex-usage-companion";
+
+    // Sidebar icons (24×24 outlines).
+    private const string UsageIcon =
+        "M12,16A3,3 0 0,1 9,13C9,11.88 9.61,10.9 10.5,10.39L20.21,4.77L14.68,14.35C14.18,15.33 13.17,16 12,16M12,3C13.81,3 15.5,3.5 16.97,4.32L14.87,5.53C14,5.19 13,5 12,5A8,8 0 0,0 4,13C4,15.21 4.89,17.21 6.34,18.65C6.73,19.04 6.73,19.67 6.34,20.06C5.95,20.45 5.32,20.45 4.93,20.07C3.12,18.26 2,15.76 2,13A10,10 0 0,1 12,3M22,13C22,15.76 20.88,18.26 19.07,20.07C18.68,20.45 18.05,20.45 17.66,20.06C17.27,19.67 17.27,19.04 17.66,18.65C19.11,17.2 20,15.21 20,13C20,12 19.81,11 19.46,10.1L20.67,8C21.5,9.5 22,11.18 22,13Z";
+    private const string AppearanceIcon =
+        "M17.5,12A1.5,1.5 0 0,1 16,10.5A1.5,1.5 0 0,1 17.5,9A1.5,1.5 0 0,1 19,10.5A1.5,1.5 0 0,1 17.5,12M14.5,8A1.5,1.5 0 0,1 13,6.5A1.5,1.5 0 0,1 14.5,5A1.5,1.5 0 0,1 16,6.5A1.5,1.5 0 0,1 14.5,8M9.5,8A1.5,1.5 0 0,1 8,6.5A1.5,1.5 0 0,1 9.5,5A1.5,1.5 0 0,1 11,6.5A1.5,1.5 0 0,1 9.5,8M6.5,12A1.5,1.5 0 0,1 5,10.5A1.5,1.5 0 0,1 6.5,9A1.5,1.5 0 0,1 8,10.5A1.5,1.5 0 0,1 6.5,12M12,3A9,9 0 0,0 3,12A9,9 0 0,0 12,21A1.5,1.5 0 0,0 13.5,19.5C13.5,19.11 13.35,18.76 13.11,18.5C12.88,18.23 12.73,17.88 12.73,17.5A1.5,1.5 0 0,1 14.23,16H16A5,5 0 0,0 21,11C21,6.58 16.97,3 12,3Z";
+    private const string WindowIcon =
+        "M21,2H3C1.9,2 1,2.9 1,4V20C1,21.1 1.9,22 3,22H21C22.1,22 23,21.1 23,20V4C23,2.9 22.1,2 21,2M21,20H3V6H21V20Z";
+    private const string NotificationsIcon =
+        "M21,19V20H3V19L5,17V11C5,7.9 7.03,5.17 10,4.29C10,4.19 10,4.1 10,4A2,2 0 0,1 12,2A2,2 0 0,1 14,4C14,4.1 14,4.19 14,4.29C16.97,5.17 19,7.9 19,11V17L21,19M14,21A2,2 0 0,1 12,23A2,2 0 0,1 10,21H14Z";
+    private const string DateTimeIcon =
+        "M12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22C6.47,22 2,17.5 2,12A10,10 0 0,1 12,2M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z";
+    private const string LoggingIcon =
+        "M5,3C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3H5M5,5H19V19H5V5M7,7V9H17V7H7M7,11V13H17V11H7M7,15V17H14V15H7Z";
+    private const string UpdatesIcon =
+        "M5,20H19V18H5M19,9H15V3H9V9H5L12,16L19,9Z";
 
     public SettingsWindow(CompanionSettings settings, UiText text)
     {
         _settings = settings;
         _text = text;
         Title = text.SettingsTitle;
-        Width = 520;
-        Height = 720;
-        MinWidth = 420;
-        MinHeight = 480;
+        Width = 860;
+        Height = 600;
+        MinWidth = 700;
+        MinHeight = 420;
         CanResize = true;
         ShowInTaskbar = settings.ShowTaskbarIcon;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
@@ -139,26 +166,22 @@ public sealed class SettingsWindow : Window
         _showClaudeSession = new CheckBox
         {
             Content = text.ShowClaudeSessionOption,
-            IsChecked = settings.ShowClaudeSession,
-            Margin = new Thickness(16, 0, 0, 0)
+            IsChecked = settings.ShowClaudeSession
         };
         _showClaudeWeekly = new CheckBox
         {
             Content = text.ShowClaudeWeeklyOption,
-            IsChecked = settings.ShowClaudeWeekly,
-            Margin = new Thickness(16, 0, 0, 0)
+            IsChecked = settings.ShowClaudeWeekly
         };
         _showCodexFiveHour = new CheckBox
         {
             Content = text.ShowCodexFiveHourOption,
-            IsChecked = settings.ShowCodexFiveHour,
-            Margin = new Thickness(16, 0, 0, 0)
+            IsChecked = settings.ShowCodexFiveHour
         };
         _showCodexWeekly = new CheckBox
         {
             Content = text.ShowCodexWeeklyOption,
-            IsChecked = settings.ShowCodexWeekly,
-            Margin = new Thickness(16, 0, 0, 0)
+            IsChecked = settings.ShowCodexWeekly
         };
         _showPacePointer = new CheckBox
         {
@@ -223,6 +246,26 @@ public sealed class SettingsWindow : Window
             ItemsSource = themes,
             SelectedItem = themes.First(choice => choice.Value == selectedTheme),
             HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+        var designs = new[]
+        {
+            new OptionChoice(OverlayDesignOptions.Latest, text.LatestOverlayDesign),
+            new OptionChoice(OverlayDesignOptions.Previous, text.PreviousOverlayDesign)
+        };
+        var selectedDesign = OverlayDesignOptions.Normalize(settings.OverlayDesign);
+        _overlayDesign = new ComboBox
+        {
+            ItemsSource = designs,
+            SelectedItem = designs.First(choice => choice.Value == selectedDesign),
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+        _previousDesignNote = new TextBlock
+        {
+            Text = text.PreviousDesignOnlyNote,
+            FontSize = 12,
+            Opacity = 0.75,
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 8, 0, 0)
         };
         _fontSizeSlider = new Slider
         {
@@ -364,81 +407,6 @@ public sealed class SettingsWindow : Window
         };
         _usageLogging.IsCheckedChanged += (_, _) => UpdateUsageLoggingControls();
 
-        var languageLabel = new TextBlock
-        {
-            Text = text.LanguageOption,
-            Margin = new Thickness(0, 8, 0, 4)
-        };
-        var trayIconStyleLabel = new TextBlock
-        {
-            Text = text.TrayIconStyleOption,
-            Margin = new Thickness(0, 8, 0, 4)
-        };
-        var positionLabel = new TextBlock
-        {
-            Text = text.PositionOption,
-            Margin = new Thickness(0, 8, 0, 4)
-        };
-        var themeLabel = new TextBlock
-        {
-            Text = text.ThemeOption,
-            Margin = new Thickness(0, 8, 0, 4)
-        };
-        var fontSizeLabel = new TextBlock
-        {
-            Text = text.FontSizeOption,
-            Margin = new Thickness(0, 8, 0, 4)
-        };
-        var fontSizeControls = new Grid
-        {
-            ColumnDefinitions = new ColumnDefinitions("*,Auto")
-        };
-        Grid.SetColumn(_fontSizeValue, 1);
-        fontSizeControls.Children.Add(_fontSizeSlider);
-        fontSizeControls.Children.Add(_fontSizeValue);
-        var fontSizePreviewBorder = new Border
-        {
-            BorderBrush = Brushes.Gray,
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(6),
-            Child = _fontSizePreview
-        };
-        var usageLogFilePathLabel = new TextBlock
-        {
-            Text = text.UsageLogFilePathOption,
-            Margin = new Thickness(0, 8, 0, 4)
-        };
-        var usageLogFormatLabel = new TextBlock
-        {
-            Text = text.UsageLogFormatOption,
-            Margin = new Thickness(0, 8, 0, 4)
-        };
-        var updateIntervalLabel = new TextBlock
-        {
-            Text = text.UpdateIntervalOption,
-            Margin = new Thickness(0, 8, 0, 4)
-        };
-        var displayedLimitsLabel = new TextBlock
-        {
-            Text = text.DisplayedLimitsOption,
-            Margin = new Thickness(0, 8, 0, 4),
-            FontWeight = FontWeight.SemiBold
-        };
-        var lowUsageAlertThresholdLabel = new TextBlock
-        {
-            Text = text.LowUsageAlertThresholdOption,
-            Margin = new Thickness(0, 8, 0, 4)
-        };
-        var resetDateTimeFormatLabel = new TextBlock
-        {
-            Text = text.ResetDateTimeFormatOption,
-            Margin = new Thickness(0, 8, 0, 4)
-        };
-        var lastUpdatedDateTimeFormatLabel = new TextBlock
-        {
-            Text = text.LastUpdatedDateTimeFormatOption,
-            Margin = new Thickness(0, 8, 0, 4)
-        };
         _resetDateTimeFormatStatus = new TextBlock
         {
             FontSize = 12,
@@ -448,6 +416,26 @@ public sealed class SettingsWindow : Window
         {
             FontSize = 12,
             TextWrapping = TextWrapping.Wrap
+        };
+        var badges = new[]
+        {
+            new OptionChoice(HeaderBadgeOptions.Lowest, text.LowestBadgeChoice),
+            new OptionChoice(HeaderBadgeOptions.Average, text.AverageBadgeChoice),
+            new OptionChoice(HeaderBadgeOptions.Claude, text.ClaudeBadgeChoice),
+            new OptionChoice(HeaderBadgeOptions.Codex, text.CodexBadgeChoice),
+            new OptionChoice(HeaderBadgeOptions.Hidden, text.HiddenBadgeChoice)
+        };
+        var selectedBadge = HeaderBadgeOptions.Normalize(settings.HeaderBadge);
+        _headerBadge = new ComboBox
+        {
+            ItemsSource = badges,
+            SelectedItem = badges.First(choice => choice.Value == selectedBadge),
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+        _resetTimeOnNameRow = new CheckBox
+        {
+            Content = text.ResetTimeOnNameRowOption,
+            IsChecked = settings.ResetTimeOnNameRow
         };
         _autoUpdateCheck = new CheckBox
         {
@@ -491,25 +479,66 @@ public sealed class SettingsWindow : Window
             finally { checkUpdate.IsEnabled = true; }
         };
         Closed += (_, _) => _updateCancellation.Cancel();
+        var fontSizeControls = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitions("*,Auto"),
+            Children = { _fontSizeSlider, _fontSizeValue }
+        };
+        Grid.SetColumn(_fontSizeValue, 1);
+        var fontSizePreviewBorder = new Border
+        {
+            BorderBrush = Brushes.Gray,
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(6),
+            Child = _fontSizePreview
+        };
         var appVersion = typeof(SettingsWindow).Assembly.GetName().Version?.ToString(3) ?? "0.0.0";
-        var appVersionInfo = new TextBlock
-        {
-            Text = $"Claude Codex Usage Companion v{appVersion}",
-            Opacity = 0.7,
-            TextWrapping = TextWrapping.Wrap
-        };
-        var authorInfo = new TextBlock
-        {
-            Text = text.AuthorInfo,
-            Opacity = 0.7,
-            TextWrapping = TextWrapping.Wrap
-        };
-        var attributionInfo = new StackPanel
-        {
-            Margin = new Thickness(0, 12),
-            Spacing = 8,
-            Children = { appVersionInfo, authorInfo }
-        };
+
+        AddPage(SettingsPageOptions.Usage, text.UsageSettingsGroup, UsageIcon,
+            Row(text.ProvidersLabel, _enableClaudeUsage, _enableCodexUsage),
+            Row(text.DisplayedLimitsOption, _showClaudeSession, _showClaudeWeekly,
+                _showCodexFiveHour, _showCodexWeekly, _showPacePointer),
+            Row(text.UpdateIntervalOption, _updateInterval));
+        AddPage(SettingsPageOptions.Appearance, text.AppearanceSettingsGroup, AppearanceIcon,
+            Row(text.LanguageOption, _language),
+            Row(text.ThemeOption, _theme),
+            Row(text.OverlayDesignOption, _overlayDesign),
+            Row(text.LimitRowsLabel, _resetTimeOnNameRow),
+            Row(text.HeaderBadgeOption, _headerBadge),
+            Row(text.FontSizeOption, fontSizeControls, fontSizePreviewBorder),
+            Row(text.BackgroundColorOption, _backgroundColor, Hint(text.BackgroundColorFormatHint), _backgroundColorStatus),
+            Row(text.SpacingLabel,
+                Hint(text.LabelPercentageSpacingOption, secondary: false), _labelPercentageSpacing,
+                Hint(text.PercentageTimeSpacingOption, secondary: false), _percentageTimeSpacing,
+                _previousDesignNote));
+        AddPage(SettingsPageOptions.Window, text.WindowSettingsGroup, WindowIcon,
+            Row(text.PositionOption, _position),
+            Row(text.WindowLabel, _alwaysOnTop, _showTaskbarIcon),
+            Row(text.SystemTrayLabel, _systemTray, Hint(text.TrayIconStyleOption, secondary: false), _trayIconStyle),
+            Row(text.StartupLabel, _startOnBoot, _minimizeOnStart));
+        AddPage(SettingsPageOptions.Notifications, text.NotificationSettingsGroup, NotificationsIcon,
+            Row(text.AlertsLabel, _lowUsageAlert, _notifyOnReset),
+            Row(text.LowUsageAlertThresholdOption, _lowUsageAlertThreshold));
+        AddPage(SettingsPageOptions.DateTime, text.DateTimeSettingsGroup, DateTimeIcon,
+            Row(text.ResetDateTimeFormatOption, _resetDateTimeFormat, _resetDateTimeFormatStatus),
+            Row(text.LastUpdatedDateTimeFormatOption, _lastUpdatedDateTimeFormat, _lastUpdatedDateTimeFormatStatus));
+        AddPage(SettingsPageOptions.Logging, text.LoggingSettingsGroup, LoggingIcon,
+            Row(null, _usageLogging),
+            Row(text.UsageLogFilePathOption, _usageLogFilePath),
+            Row(text.UsageLogFormatOption, _usageLogFormat));
+        AddPage(SettingsPageOptions.Updates, text.UpdateSettingsGroup, UpdatesIcon,
+            Row(null, _autoUpdateCheck),
+            Row(null, new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 8,
+                Children = { checkUpdate, openRelease }
+            }, updateStatus),
+            Row(text.AboutLabel,
+                new TextBlock { Text = $"Claude Codex Usage Companion v{appVersion}", TextWrapping = TextWrapping.Wrap },
+                LinkLine(text.ProjectLinkLabel, AppUpdateChecker.RepositoryUrl),
+                LinkLine(text.OriginalProjectLinkLabel, OriginalProjectUrl)));
+
         _save = new Button
         {
             Content = text.OkAction,
@@ -531,126 +560,63 @@ public sealed class SettingsWindow : Window
             HorizontalContentAlignment = HorizontalAlignment.Center
         };
         _apply.Click += (_, _) => ApplyWithoutClosing();
-
+        var resetDefaults = new Button { Content = text.ResetDefaultsAction };
+        resetDefaults.Click += async (_, _) => await ConfirmResetDefaultsAsync();
         var actions = new StackPanel
         {
             Orientation = Orientation.Horizontal,
-            HorizontalAlignment = HorizontalAlignment.Right,
             Spacing = 8,
             Children = { _save, cancel, _apply }
         };
-        var options = new StackPanel
-        {
-            Spacing = 12,
-            Children =
-            {
-                CreateSection("usage", text.UsageSettingsGroup,
-                _enableClaudeUsage,
-                _enableCodexUsage,
-                displayedLimitsLabel,
-                _showClaudeSession,
-                _showClaudeWeekly,
-                _showCodexFiveHour,
-                _showCodexWeekly,
-                _showPacePointer,
-                updateIntervalLabel,
-                _updateInterval
-                ),
-                CreateSection("appearance", text.AppearanceSettingsGroup,
-                languageLabel,
-                _language,
-                themeLabel,
-                _theme,
-                fontSizeLabel, fontSizeControls, fontSizePreviewBorder,
-                new TextBlock { Text = text.BackgroundColorOption, Margin = new Thickness(0, 8, 0, 4) },
-                _backgroundColor,
-                _backgroundColorStatus,
-                new TextBlock { Text = text.LabelPercentageSpacingOption, Margin = new Thickness(0, 8, 0, 4) },
-                _labelPercentageSpacing,
-                new TextBlock { Text = text.PercentageTimeSpacingOption, Margin = new Thickness(0, 8, 0, 4) },
-                _percentageTimeSpacing,
-                positionLabel,
-                _position
-                ),
-                CreateSection("window", text.WindowSettingsGroup,
-                _systemTray,
-                trayIconStyleLabel,
-                _trayIconStyle,
-                _showTaskbarIcon,
-                _startOnBoot,
-                _minimizeOnStart,
-                _alwaysOnTop
-                ),
-                CreateSection("notifications", text.NotificationSettingsGroup,
-                _lowUsageAlert,
-                lowUsageAlertThresholdLabel,
-                _lowUsageAlertThreshold,
-                _notifyOnReset
-                ),
-                CreateSection("dateTime", text.DateTimeSettingsGroup,
-                resetDateTimeFormatLabel,
-                _resetDateTimeFormat,
-                _resetDateTimeFormatStatus,
-                lastUpdatedDateTimeFormatLabel,
-                _lastUpdatedDateTimeFormat,
-                _lastUpdatedDateTimeFormatStatus
-                ),
-                CreateSection("logging", text.LoggingSettingsGroup,
-                _usageLogging,
-                usageLogFilePathLabel,
-                _usageLogFilePath,
-                usageLogFormatLabel,
-                _usageLogFormat),
-                CreateSection("updates", text.UpdateSettingsGroup,
-                _autoUpdateCheck,
-                checkUpdate,
-                updateStatus,
-                openRelease
-                )
-            }
-        };
-        var expandAll = CreateSectionActionButton(text.ExpandAllAction,
-            "M3,2 L8,2 Q9,2 9,3 Q9,4 8,4 L5.4,4 L10.7,9.3 Q11.4,10 10.7,10.7 Q10,11.4 9.3,10.7 L4,5.4 L4,8 Q4,9 3,9 Q2,9 2,8 L2,3 Q2,2 3,2 Z M22,3 L22,8 Q22,9 21,9 Q20,9 20,8 L20,5.4 L14.7,10.7 Q14,11.4 13.3,10.7 Q12.6,10 13.3,9.3 L18.6,4 L16,4 Q15,4 15,3 Q15,2 16,2 L21,2 Q22,2 22,3 Z M21,22 L16,22 Q15,22 15,21 Q15,20 16,20 L18.6,20 L13.3,14.7 Q12.6,14 13.3,13.3 Q14,12.6 14.7,13.3 L20,18.6 L20,16 Q20,15 21,15 Q22,15 22,16 L22,21 Q22,22 21,22 Z M2,21 L2,16 Q2,15 3,15 Q4,15 4,16 L4,18.6 L9.3,13.3 Q10,12.6 10.7,13.3 Q11.4,14 10.7,14.7 L5.4,20 L8,20 Q9,20 9,21 Q9,22 8,22 L3,22 Q2,22 2,21 Z");
-        var collapseAll = CreateSectionActionButton(text.CollapseAllAction,
-            "M9,10 L4,10 Q3,10 3,9 Q3,8 4,8 L6.6,8 L1.3,2.7 Q0.6,2 1.3,1.3 Q2,0.6 2.7,1.3 L8,6.6 L8,4 Q8,3 9,3 Q10,3 10,4 L10,9 Q10,10 9,10 Z M14,9 L14,4 Q14,3 15,3 Q16,3 16,4 L16,6.6 L21.3,1.3 Q22,0.6 22.7,1.3 Q23.4,2 22.7,2.7 L17.4,8 L20,8 Q21,8 21,9 Q21,10 20,10 L15,10 Q14,10 14,9 Z M15,14 L20,14 Q21,14 21,15 Q21,16 20,16 L17.4,16 L22.7,21.3 Q23.4,22 22.7,22.7 Q22,23.4 21.3,22.7 L16,17.4 L16,20 Q16,21 15,21 Q14,21 14,20 L14,15 Q14,14 15,14 Z M10,15 L10,20 Q10,21 9,21 Q8,21 8,20 L8,17.4 L2.7,22.7 Q2,23.4 1.3,22.7 Q0.6,22 1.3,21.3 L6.6,16 L4,16 Q3,16 3,15 Q3,14 4,14 L9,14 Q10,14 10,15 Z");
-        expandAll.Click += (_, _) => SetAllSectionsExpanded(true);
-        collapseAll.Click += (_, _) => SetAllSectionsExpanded(false);
-        var resetDefaults = new Button { Content = text.ResetDefaultsAction };
-        resetDefaults.Click += async (_, _) => await ConfirmResetDefaultsAsync();
-        var bulkActions = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            HorizontalAlignment = HorizontalAlignment.Right,
-            Spacing = 8,
-            Children = { expandAll, collapseAll }
-        };
-        var sectionActions = new Grid
+        var footer = new Grid
         {
             ColumnDefinitions = new ColumnDefinitions("*,Auto"),
-            Margin = new Thickness(0, 0, 0, 12),
-            Children = { resetDefaults, bulkActions }
+            Margin = new Thickness(16, 12),
+            Children = { resetDefaults, actions }
         };
-        resetDefaults.HorizontalAlignment = HorizontalAlignment.Left;
-        Grid.SetColumn(bulkActions, 1);
-        var optionsScroller = new ScrollViewer
+        Grid.SetColumn(actions, 1);
+
+        // Every page stays in the tree; the sidebar only changes which one is visible.
+        var pages = new Grid { Margin = new Thickness(28, 20, 28, 20) };
+        foreach (var page in _pages.Values)
+            pages.Children.Add(page);
+        var pageScroller = new ScrollViewer
         {
-            Content = options,
+            Content = pages,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto
         };
+        _sidebar.SelectionChanged += (_, _) => ShowSelectedPage();
+        var sidebarHost = new Border
+        {
+            // The sidebar fits its longest page title, which differs by language and font.
+            MinWidth = 170,
+            Padding = new Thickness(8),
+            Background = new SolidColorBrush(Color.FromArgb(0x10, 0x80, 0x80, 0x80)),
+            BorderBrush = new SolidColorBrush(Color.FromArgb(0x30, 0x80, 0x80, 0x80)),
+            BorderThickness = new Thickness(0, 0, 1, 0),
+            Child = _sidebar
+        };
+        var body = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitions("Auto,*"),
+            Children = { sidebarHost, pageScroller }
+        };
+        Grid.SetColumn(pageScroller, 1);
+        var footerHost = new Border
+        {
+            BorderBrush = new SolidColorBrush(Color.FromArgb(0x30, 0x80, 0x80, 0x80)),
+            BorderThickness = new Thickness(0, 1, 0, 0),
+            Child = footer
+        };
         var layout = new Grid
         {
-            RowDefinitions = new RowDefinitions("Auto,*,Auto,Auto"),
-            Margin = new Thickness(24)
+            RowDefinitions = new RowDefinitions("*,Auto"),
+            Children = { body, footerHost }
         };
-        Grid.SetRow(optionsScroller, 1);
-        Grid.SetRow(attributionInfo, 2);
-        Grid.SetRow(actions, 3);
-        layout.Children.Add(sectionActions);
-        layout.Children.Add(optionsScroller);
-        layout.Children.Add(attributionInfo);
-        layout.Children.Add(actions);
+        Grid.SetRow(footerHost, 1);
         Content = layout;
+        SelectedPage = settings.SettingsPage;
         _resetDateTimeFormat.PropertyChanged += HandleDateTimeFormatChanged;
         _lastUpdatedDateTimeFormat.PropertyChanged += HandleDateTimeFormatChanged;
         _resetDateTimeFormat.SelectionChanged += HandleDateTimeFormatSelectionChanged;
@@ -659,6 +625,8 @@ public sealed class SettingsWindow : Window
         UpdateLowUsageAlertControls();
         UpdateMinimizeOnStartControls();
         UpdateDisplayedLimitControls();
+        UpdateDesignControls();
+        _overlayDesign.SelectionChanged += (_, _) => UpdateDesignControls();
         UpdateDateTimeFormatValidation();
         _initialSettings = CaptureSettings();
         _backgroundColor.TextChanged += (_, _) => PreviewAppearance();
@@ -668,21 +636,23 @@ public sealed class SettingsWindow : Window
         Closing += HandleClosing;
     }
 
-    public SettingsSectionState SectionState => new()
+    /// <summary>The page shown in the sidebar, as a <see cref="SettingsPageOptions"/> value.</summary>
+    public string SelectedPage
     {
-        Appearance = _sections["appearance"].IsExpanded,
-        DateTime = _sections["dateTime"].IsExpanded,
-        Logging = _sections["logging"].IsExpanded,
-        Notifications = _sections["notifications"].IsExpanded,
-        Usage = _sections["usage"].IsExpanded,
-        Window = _sections["window"].IsExpanded,
-        Updates = _sections["updates"].IsExpanded
-    };
+        get => (_sidebar.SelectedItem as ListBoxItem)?.Tag as string ?? SettingsPageOptions.Usage;
+        set
+        {
+            var page = SettingsPageOptions.Normalize(value);
+            _sidebar.SelectedItem = _sidebar.Items.OfType<ListBoxItem>().First(item => (string?)item.Tag == page);
+            ShowSelectedPage();
+        }
+    }
 
-    private void SetAllSectionsExpanded(bool expanded)
+    private void ShowSelectedPage()
     {
-        foreach (var section in _sections.Values)
-            section.IsExpanded = expanded;
+        var selected = SelectedPage;
+        foreach (var (key, page) in _pages)
+            page.IsVisible = key == selected;
     }
 
     public event Action<string>? PositionPreviewRequested;
@@ -755,7 +725,7 @@ public sealed class SettingsWindow : Window
 
     private void ResetToDefaults()
     {
-        var defaults = new CompanionSettings { SettingsSections = SectionState };
+        var defaults = new CompanionSettings { SettingsPage = SelectedPage };
         _resettingDefaults = true;
         try
         {
@@ -777,6 +747,9 @@ public sealed class SettingsWindow : Window
             _showPacePointer.IsChecked = defaults.ShowPacePointer;
             _language.SelectedItem = _language.Items.OfType<LanguageChoice>().First(choice => choice.Value == defaults.Language);
             _theme.SelectedItem = _theme.Items.OfType<ThemeChoice>().First(choice => choice.Value == defaults.Theme);
+            _overlayDesign.SelectedItem = _overlayDesign.Items.OfType<OptionChoice>().First(choice => choice.Value == defaults.OverlayDesign);
+            _resetTimeOnNameRow.IsChecked = defaults.ResetTimeOnNameRow;
+            _headerBadge.SelectedItem = _headerBadge.Items.OfType<OptionChoice>().First(choice => choice.Value == defaults.HeaderBadge);
             _fontSizeSlider.Value = defaults.FontScale * 100;
             _backgroundColor.Text = defaults.BackgroundColor;
             _labelPercentageSpacing.Value = defaults.LabelPercentageSpacing;
@@ -800,6 +773,7 @@ public sealed class SettingsWindow : Window
         }
         UpdateMinimizeOnStartControls();
         UpdateDisplayedLimitControls();
+        UpdateDesignControls();
         UpdateLowUsageAlertControls();
         UpdateUsageLoggingControls();
         UpdateFontSizePreview();
@@ -977,6 +951,9 @@ public sealed class SettingsWindow : Window
             ShowPacePointer = _showPacePointer.IsChecked == true,
             Language = (_language.SelectedItem as LanguageChoice)?.Value ?? "en-US",
             Theme = (_theme.SelectedItem as ThemeChoice)?.Value ?? UiThemeOptions.System,
+            OverlayDesign = (_overlayDesign.SelectedItem as OptionChoice)?.Value ?? OverlayDesignOptions.Latest,
+            ResetTimeOnNameRow = _resetTimeOnNameRow.IsChecked == true,
+            HeaderBadge = (_headerBadge.SelectedItem as OptionChoice)?.Value ?? HeaderBadgeOptions.Lowest,
             FontScale = OverlayLayoutOptions.NormalizeFontScale(_fontSizeSlider.Value / 100),
             BackgroundColor = OverlayAppearanceOptions.NormalizeBackgroundColor(_backgroundColor.Text),
             PercentageTimeSpacing = (int)(_percentageTimeSpacing.Value ?? OverlayAppearanceOptions.DefaultSpacing),
@@ -1020,6 +997,18 @@ public sealed class SettingsWindow : Window
         var codexEnabled = _enableCodexUsage.IsChecked == true;
         _showCodexFiveHour.IsEnabled = codexEnabled;
         _showCodexWeekly.IsEnabled = codexEnabled;
+    }
+
+    private void UpdateDesignControls()
+    {
+        // The label gaps belong to the Previous design's bar layout.
+        var previous = (_overlayDesign.SelectedItem as OptionChoice)?.Value == OverlayDesignOptions.Previous;
+        _labelPercentageSpacing.IsEnabled = previous;
+        _percentageTimeSpacing.IsEnabled = previous;
+        _previousDesignNote.IsVisible = !previous;
+        // The one-row layout belongs to the Latest design's limit rows.
+        _resetTimeOnNameRow.IsEnabled = !previous;
+        _headerBadge.IsEnabled = !previous;
     }
 
     private void UpdateMinimizeOnStartControls()
@@ -1108,48 +1097,108 @@ public sealed class SettingsWindow : Window
         return (comboBox.Text ?? comboBox.SelectedItem as string ?? string.Empty).Trim();
     }
 
-    private static Button CreateSectionActionButton(string label, string geometry)
+    /// <summary>Adds a sidebar entry and its page: a heading over a two-column form.</summary>
+    private void AddPage(string key, string title, string icon, params FormRow[] rows)
     {
-        var button = new Button
+        // A fixed label column keeps the controls in place when the page changes.
+        var form = new Grid { ColumnDefinitions = new ColumnDefinitions("170,*"), RowSpacing = 18, ColumnSpacing = 16 };
+        foreach (var row in rows)
         {
-            Content = new PathIcon { Width = 18, Height = 18, Data = Geometry.Parse(geometry) },
-            Width = 32,
-            Height = 32,
-            Padding = new Thickness(0),
-            HorizontalContentAlignment = HorizontalAlignment.Center,
-            VerticalContentAlignment = VerticalAlignment.Center
-        };
-        ToolTip.SetTip(button, label);
-        AutomationProperties.SetName(button, label);
-        return button;
+            form.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+            var index = form.RowDefinitions.Count - 1;
+            var (label, content) = row;
+            if (label is not null)
+            {
+                Grid.SetRow(label, index);
+                form.Children.Add(label);
+            }
+            Grid.SetRow(content, index);
+            Grid.SetColumn(content, 1);
+            form.Children.Add(content);
+        }
+
+        _pages.Add(key, new StackPanel
+        {
+            Spacing = 20,
+            IsVisible = false,
+            Children =
+            {
+                new TextBlock { Text = title, FontSize = 20, FontWeight = FontWeight.SemiBold },
+                form
+            }
+        });
+        _sidebar.Items.Add(new ListBoxItem
+        {
+            Tag = key,
+            Padding = new Thickness(10, 8),
+            Content = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 10,
+                Children =
+                {
+                    new PathIcon { Width = 18, Height = 18, Data = Geometry.Parse(icon) },
+                    new TextBlock { Text = title, VerticalAlignment = VerticalAlignment.Center }
+                }
+            }
+        });
     }
 
-    private Expander CreateSection(string key, string title, params Control[] controls)
+    /// <summary>One form row: a right-aligned label and its controls stacked on the right.</summary>
+    private static FormRow Row(string? label, params Control[] controls)
     {
-        var content = new StackPanel
+        var stack = new StackPanel
         {
-            Spacing = 12,
-            Margin = new Thickness(0, 8, 0, 8)
+            Spacing = 8,
+            Width = 380,
+            HorizontalAlignment = HorizontalAlignment.Left
         };
         foreach (var control in controls)
-            content.Children.Add(control);
-
-        var section = new Expander
+            stack.Children.Add(control);
+        // Align the label with the first control's text line.
+        var first = controls[0];
+        var labelText = label is null ? null : new TextBlock
         {
-            Header = new TextBlock
-            {
-                Text = title,
-                FontWeight = FontWeight.Bold,
-                FontSize = 15
-            },
-            IsExpanded = _settings.SettingsSections.IsExpanded(key),
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            HorizontalContentAlignment = HorizontalAlignment.Stretch,
-            Content = content
+            Text = label,
+            TextWrapping = TextWrapping.Wrap,
+            TextAlignment = TextAlignment.Right,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Top,
+            Margin = new Thickness(0, first is CheckBox ? 6 : first is TextBlock ? 0 : 7, 0, 0)
         };
-        _sections.Add(key, section);
-        return section;
+        return new FormRow(labelText, stack);
     }
+
+    private sealed record FormRow(TextBlock? Label, Control Content);
+
+    /// <summary>A label and a link that opens <paramref name="url"/> in the browser.</summary>
+    private static Control LinkLine(string label, string url)
+    {
+        var link = new HyperlinkButton
+        {
+            Content = url,
+            NavigateUri = new Uri(url),
+            Padding = new Thickness(0),
+            FontSize = 12,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        ToolTip.SetTip(link, url);
+        AutomationProperties.SetName(link, $"{label} {url}");
+        return new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 4,
+            Children = { Hint(label), link }
+        };
+    }
+
+    private static TextBlock Hint(string text, bool secondary = true) => new()
+    {
+        Text = text,
+        FontSize = secondary ? 12 : 13,
+        Opacity = secondary ? 0.7 : 0.9,
+        TextWrapping = TextWrapping.Wrap
+    };
 
     private sealed record LanguageChoice(string Value, string DisplayName)
     {
@@ -1157,6 +1206,12 @@ public sealed class SettingsWindow : Window
     }
 
     private sealed record ThemeChoice(string Value, string DisplayName)
+    {
+        public override string ToString() => DisplayName;
+    }
+
+    /// <summary>A combo box choice: a stored setting value and its display name.</summary>
+    private sealed record OptionChoice(string Value, string DisplayName)
     {
         public override string ToString() => DisplayName;
     }

@@ -16,7 +16,9 @@ internal sealed record OverlayThemePalette(
     string Yellow,
     string Orange,
     string Red,
-    string Gray)
+    string Gray,
+    string LatestCardBackground,
+    string LatestDivider)
 {
     public static OverlayThemePalette Dark { get; } = new(
         "#E62B2827",
@@ -34,7 +36,9 @@ internal sealed record OverlayThemePalette(
         "#FFF2CF5B",
         "#FFFF9847",
         "#FFFF6666",
-        "#FF777C78");
+        "#FF777C78",
+        "#0EFFFFFF",
+        "#1FFFFFFF");
 
     public static OverlayThemePalette Light { get; } = new(
         "#F7F5F7FB",
@@ -52,5 +56,7 @@ internal sealed record OverlayThemePalette(
         "#FF9C7A00",
         "#FFC65D00",
         "#FFC62828",
-        "#FF707770");
+        "#FF707770",
+        "#FFFFFFFF",
+        "#1A000000");
 }

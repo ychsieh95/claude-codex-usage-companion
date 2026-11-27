@@ -6,6 +6,12 @@
   <kcfgfile name=""/>
 
   <group name="General">
+    <entry name="designStyle" type="Int">
+      <label>Widget design: 0 for the latest design, 1 for the previous (v0.1.5) design</label>
+      <default>0</default>
+      <min>0</min>
+      <max>1</max>
+    </entry>
     <entry name="compactViewStyle" type="Int">
       <label>Compact panel view style: 0 for circles, 1 for bars</label>
       <default>0</default>
@@ -17,6 +23,72 @@
       <default>1</default>
       <min>1</min>
       <max>60</max>
+    </entry>
+    <entry name="percentMode" type="Int">
+      <label>Show usage percentages as 0 for remaining, 1 for used</label>
+      <default>0</default>
+      <min>0</min>
+      <max>1</max>
+    </entry>
+    <entry name="badgeMode" type="Int">
+      <label>Expanded popup badge: 0 for the lowest remaining (or highest used) limit, 1 for the average of the shown limits, 2 for Claude's lowest remaining limit, 3 for Codex's lowest remaining limit, 4 to hide it</label>
+      <default>0</default>
+      <min>0</min>
+      <max>4</max>
+    </entry>
+    <entry name="clickAction" type="Int">
+      <label>Panel click action: 0 opens the popup, 1 opens the companion app</label>
+      <default>0</default>
+      <min>0</min>
+      <max>1</max>
+    </entry>
+    <entry name="compactShowTightestOnly" type="Bool">
+      <label>Show only the lowest remaining (or highest used) limit in the panel</label>
+      <default>false</default>
+    </entry>
+    <entry name="compactShowLabels" type="Bool">
+      <label>Show short limit labels under the panel meters</label>
+      <default>true</default>
+    </entry>
+    <entry name="warningThreshold" type="Int">
+      <label>Remaining percentage below which a limit shows the warning color</label>
+      <default>70</default>
+      <min>1</min>
+      <max>100</max>
+    </entry>
+    <entry name="criticalThreshold" type="Int">
+      <label>Remaining percentage below which a limit shows the critical color</label>
+      <default>40</default>
+      <min>1</min>
+      <max>100</max>
+    </entry>
+    <entry name="resetTimeFormat" type="Int">
+      <label>Reset time display: 0 for countdown and clock time, 1 for countdown only, 2 for clock time only</label>
+      <default>0</default>
+      <min>0</min>
+      <max>2</max>
+    </entry>
+    <entry name="clockFormat" type="Int">
+      <label>Clock format: 0 for the system default, 1 for 12-hour, 2 for 24-hour</label>
+      <default>0</default>
+      <min>0</min>
+      <max>2</max>
+    </entry>
+    <entry name="showCredits" type="Bool">
+      <label>Show credit details in the expanded popup</label>
+      <default>true</default>
+    </entry>
+    <entry name="tooltipShowTightest" type="Bool">
+      <label>Show the lowest remaining (or highest used) limit in the panel tooltip</label>
+      <default>true</default>
+    </entry>
+    <entry name="tooltipShowResetTime" type="Bool">
+      <label>Show reset times in the panel tooltip</label>
+      <default>true</default>
+    </entry>
+    <entry name="tooltipShowLastUpdated" type="Bool">
+      <label>Show the last update time in the panel tooltip</label>
+      <default>true</default>
     </entry>
     <entry name="showClaudeSession" type="Bool">
       <label>Show Claude current-session usage in the panel</label>

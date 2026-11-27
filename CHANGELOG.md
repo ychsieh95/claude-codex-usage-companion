@@ -6,8 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+
+- A **Design** option in the Plasma widget configuration. **Latest** (default) uses the redesigned widget. **Previous** restores the v0.1.5 look.
+- A **Percentages** option in the widget configuration that shows each limit as **Remaining** (default) or **Used**. Colors always follow the remaining amount.
+- **Tooltip** options in the widget configuration to show or hide the lowest remaining (or highest used) limit, reset times, and the last update time in the panel tooltip.
+- Widget configuration options for what clicking the panel widget does (open the popup or the companion app), showing only the lowest remaining (or highest used) limit in the panel, hiding the panel meter labels, the warning and critical color thresholds, the reset time format (countdown, time, or both), the clock format (system, 12-hour, or 24-hour), and hiding the credits line in the popup.
+- A badge in the widget popup header, with a tooltip that names what it shows. **Popup badge** in the widget configuration chooses the most-used limit (default; the lowest remaining or highest used), the average of the shown limits, Claude's or Codex's most-used limit, or **Hidden**.
+- A **Design** option under **Settings → Appearance** for the desktop panel. **Latest** (default) uses the redesigned panel. **Previous** restores the v0.1.5 look.
+- A **Limit rows** option under **Settings → Appearance** that shows each limit's name and reset time on one row in the latest panel design, which makes the panel shorter. It is off by default.
+- A **Header badge** option under **Settings → Appearance** that chooses what the latest panel design's header badge shows: the lowest remaining limit (default), the average of the shown limits, the lowest remaining Claude or Codex limit, or nothing.
+
 ### Changed
 
+- Redesigned the Settings window: a sidebar of pages (**Usage**, **Appearance**, **Window and startup**, **Notifications**, **Date and time**, **Logging**, **Updates**) replaces the expandable sections, and each page aligns its labels in one column. Settings reopens on the last page you viewed. **Expand all** and **Collapse all** are removed, **Window position** moved to **Window and startup**, and the version moved to **Updates**, with links to this project and the original project; the author line is removed.
+- Redesigned the desktop panel to match the widget popup: a card per provider with a brand-colored edge, monospaced percentages as tall as each limit's name, reset time, and bar, a divider above the credits line, reset countdowns with local reset times, thin bars with an even-pace dot and a pace tooltip, and a header badge for the lowest remaining limit. The label and reset-time gap settings and the card resize handles apply only to the **Previous** design.
+- Redesigned the Plasma widget: theme-aware radial meters or meter strips in the panel, a popup with a card per provider, reset countdowns with local reset times, and an even-pace dot with a pace tooltip.
+- The widget's panel tooltip is a table of limits, percentages, and reset times, so long lines no longer wrap or push the last update time past Plasma's 8-line tooltip limit.
+- The widget configuration page uses labelled option groups (**Tooltip**, **Limits**, **Popup**) aligned in one column.
 - Updated the CI and release workflows to `actions/checkout@v7`, `actions/setup-dotnet@v6`, and `actions/upload-artifact@v7`, which run on Node.js 24 instead of the deprecated Node.js 20.
 
 ## [0.1.5] - 2026-11-23

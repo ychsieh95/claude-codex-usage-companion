@@ -8,6 +8,41 @@ namespace CodexUsageCompanion.Tests;
 public sealed class UiTextTests
 {
     [Theory]
+    [InlineData(UiLanguage.English, 0.5, "1 minute")]
+    [InlineData(UiLanguage.English, 48, "48 minutes")]
+    [InlineData(UiLanguage.English, 120, "2h")]
+    [InlineData(UiLanguage.English, 134, "2h 14m")]
+    [InlineData(UiLanguage.English, 3 * 1440 + 300, "3d 5h")]
+    [InlineData(UiLanguage.English, 5 * 1440, "5d")]
+    [InlineData(UiLanguage.TraditionalChinese, 134, "2 小時 14 分")]
+    [InlineData(UiLanguage.SimplifiedChinese, 3 * 1440 + 300, "3 天 5 小时")]
+    public void DurationRoundsUpToWholeMinutes(UiLanguage language, double minutes, string expected)
+    {
+        Assert.Equal(expected, UiText.For(language).FormatDuration(TimeSpan.FromMinutes(minutes)));
+    }
+
+    [Fact]
+    public void ResetCountdownShowsTimeWithinADayAndDateBeyondIt()
+    {
+        var now = new DateTimeOffset(2026, 11, 27, 14, 9, 0, TimeSpan.Zero);
+        var english = UiText.For(UiLanguage.English);
+        Assert.Equal("Resets in 2h 14m · 16:23", english.FormatResetCountdown(now.AddMinutes(134), now));
+        Assert.Equal("Resets in 3d 5h · Nov 30", english.FormatResetCountdown(now.AddHours(77), now));
+        Assert.Equal("2 小時 14 分後重置 · 16:23",
+            UiText.For(UiLanguage.TraditionalChinese).FormatResetCountdown(now.AddMinutes(134), now));
+    }
+
+    [Theory]
+    [InlineData(40, 41, "on pace")]
+    [InlineData(40, 60, "ahead of pace")]
+    [InlineData(40, 23, "running faster than pace")]
+    public void PaceTooltipComparesRemainingWithEvenPace(int expected, int remaining, string pace)
+    {
+        Assert.Equal($"Even pace: about {expected}% should remain now. Your usage is {pace}.",
+            UiText.For(UiLanguage.English).FormatPaceTooltip(expected, remaining));
+    }
+
+    [Theory]
     [InlineData("auto", "en-US", UiLanguage.English)]
     [InlineData("auto", "zh-TW", UiLanguage.TraditionalChinese)]
     [InlineData("auto", "zh-CN", UiLanguage.SimplifiedChinese)]
@@ -24,7 +59,7 @@ public sealed class UiTextTests
 
     [Theory]
     [InlineData(UiLanguage.English, "58% remaining", "Reset time unavailable", "Last updated at 00:51")]
-    [InlineData(UiLanguage.TraditionalChinese, "剩餘 58%", "重置時間未提供", "最後更新於 00:51")]
+    [InlineData(UiLanguage.TraditionalChinese, "剩餘 58%", "無法取得重置時間", "最後更新於 00:51")]
     [InlineData(UiLanguage.SimplifiedChinese, "剩余 58%", "未提供重置时间", "最后更新于 00:51")]
     public void TrayTooltipContainsUsageResetAndUpdatedTime(
         UiLanguage language,
@@ -74,8 +109,8 @@ public sealed class UiTextTests
     {
         var text = UiText.For(UiLanguage.SimplifiedChinese);
 
-        Assert.Equal("5 小时使用量限制", text.FiveHourTitle);
-        Assert.Equal("每周使用上限", text.WeeklyTitle);
+        Assert.Equal("5 小时用量限制", text.FiveHourTitle);
+        Assert.Equal("每周用量限制", text.WeeklyTitle);
         Assert.Equal("剩余 58%", text.FormatRemaining(58));
         Assert.Equal("当前方案未提供此额度", text.LimitUnavailable);
     }
@@ -115,7 +150,7 @@ public sealed class UiTextTests
         Assert.Equal(
             "Last updated date/time format",
             text.LastUpdatedDateTimeFormatOption);
-        Assert.Equal("Author: ychsieh95 • Original project: gkfriend/codex-usage-companion", text.AuthorInfo);
+        Assert.Equal("Original project:", text.OriginalProjectLinkLabel);
         Assert.Equal("Enable Codex usage", text.EnableCodexUsageOption);
         Assert.Equal("Enable Claude usage", text.EnableClaudeUsageOption);
         Assert.Equal("Displayed limits", text.DisplayedLimitsOption);
@@ -242,7 +277,7 @@ public sealed class UiTextTests
 
     [Theory]
     [InlineData(UiLanguage.English, "OK", "Cancel", "Apply")]
-    [InlineData(UiLanguage.TraditionalChinese, "確定", "取消", "應用")]
+    [InlineData(UiLanguage.TraditionalChinese, "確定", "取消", "套用")]
     [InlineData(UiLanguage.SimplifiedChinese, "确定", "取消", "应用")]
     public void SettingsActionsAreLocalized(
         UiLanguage language,
@@ -303,8 +338,8 @@ public sealed class UiTextTests
 
     [Theory]
     [InlineData(UiLanguage.English, "Usage credits: $6.32 / $100.00, Auto-reload: Enabled")]
-    [InlineData(UiLanguage.TraditionalChinese, "使用點數：$6.32 / $100.00, 自動加購：已啟用")]
-    [InlineData(UiLanguage.SimplifiedChinese, "使用点数：$6.32 / $100.00, 自动加购：已启用")]
+    [InlineData(UiLanguage.TraditionalChinese, "使用點數：$6.32 / $100.00，自動加購：已啟用")]
+    [InlineData(UiLanguage.SimplifiedChinese, "使用点数：$6.32 / $100.00，自动加购：已启用")]
     public void FormatClaudeCreditsDetailsShowsUsedAndLimitWhenEnabled(
         UiLanguage language,
         string expected)
@@ -372,12 +407,12 @@ public sealed class UiTextTests
     [Theory]
     [InlineData(
         UiLanguage.TraditionalChinese,
-        "點數：715.00, 自動儲值：已啟用",
-        "每週使用上限剩餘 12%。")]
+        "點數：715.00，自動儲值：已啟用",
+        "每週用量限制剩餘 12%。")]
     [InlineData(
         UiLanguage.SimplifiedChinese,
-        "点数：715.00, 自动充值：已启用",
-        "每周使用上限剩余 12%。")]
+        "点数：715.00，自动充值：已启用",
+        "每周用量限制剩余 12%。")]
     [InlineData(
         UiLanguage.English,
         "Credits: 715.00, Automatic reload: Enabled",
@@ -434,13 +469,14 @@ public sealed class UiTextTests
     }
 
     [Theory]
-    [InlineData(UiLanguage.TraditionalChinese, "作者：ychsieh95 • 原始專案：gkfriend/codex-usage-companion")]
-    [InlineData(UiLanguage.SimplifiedChinese, "作者：ychsieh95 • 原始项目：gkfriend/codex-usage-companion")]
-    public void AuthorInfoIsLocalized(UiLanguage language, string expected)
+    [InlineData(UiLanguage.TraditionalChinese, "專案：", "原始專案：")]
+    [InlineData(UiLanguage.SimplifiedChinese, "项目：", "原始项目：")]
+    public void AboutLinkLabelsAreLocalized(UiLanguage language, string project, string original)
     {
         var text = UiText.For(language);
 
-        Assert.Equal(expected, text.AuthorInfo);
+        Assert.Equal(project, text.ProjectLinkLabel);
+        Assert.Equal(original, text.OriginalProjectLinkLabel);
     }
 
     [Theory]
