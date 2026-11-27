@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-27
+
 ### Added
 
 - A **Design** option in the Plasma widget configuration. **Latest** (default) uses the redesigned widget. **Previous** restores the v0.1.5 look.
@@ -173,6 +175,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - No telemetry. This app never stores or writes authentication tokens of its own; when Claude usage is enabled, it reads the OAuth access token Claude Code already stores locally and sends it only to Anthropic's official API over HTTPS.
 
+[0.2.0]: https://github.com/ychsieh95/claude-codex-usage-companion/releases/tag/v0.2.0
 [0.1.5]: https://github.com/ychsieh95/claude-codex-usage-companion/releases/tag/v0.1.5
 [0.1.4]: https://github.com/ychsieh95/claude-codex-usage-companion/releases/tag/v0.1.4
 [0.1.3]: https://github.com/ychsieh95/claude-codex-usage-companion/releases/tag/v0.1.3

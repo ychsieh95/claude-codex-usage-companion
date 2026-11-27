@@ -20,7 +20,7 @@
         "Name": "Claude Codex Usage",
         "Name[zh_CN]": "Claude Codex 用量",
         "Name[zh_TW]": "Claude Codex 用量",
-        "Version": "0.1.5",
+        "Version": "0.2.0",
         "Website": "https://github.com/ychsieh95/claude-codex-usage-companion"
     },
     "X-Plasma-API-Minimum-Version": "6.0"

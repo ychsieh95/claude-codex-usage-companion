@@ -199,7 +199,7 @@ sha256sum --check --ignore-missing SHA256SUMS
 使用以下指令安裝套件：
 
 ```bash
-sudo apt install ./claude-codex-usage-companion_0.1.5_amd64.deb
+sudo apt install ./claude-codex-usage-companion_0.2.0_amd64.deb
 ```
 
 套件會安裝下列項目：
@@ -214,7 +214,7 @@ sudo apt install ./claude-codex-usage-companion_0.1.5_amd64.deb
 使用以下指令安裝套件：
 
 ```bash
-sudo snap install --classic --dangerous ./claude-codex-usage-companion_0.1.5_amd64.snap
+sudo snap install --classic --dangerous ./claude-codex-usage-companion_0.2.0_amd64.snap
 ```
 
 由於檔案並非來自 Snap Store，因此需要 `--dangerous` 旗標。
@@ -230,7 +230,7 @@ sudo snap alias claude-codex-usage-companion claude-codex-usage
 此 snap 包含 Plasma 小工具套件，但不會自動安裝。若要安裝小工具，請執行：
 
 ```bash
-kpackagetool6 --type Plasma/Applet --install /snap/claude-codex-usage-companion/current/usr/share/plasma/claude-codex-usage-companion-0.1.5.plasmoid
+kpackagetool6 --type Plasma/Applet --install /snap/claude-codex-usage-companion/current/usr/share/plasma/claude-codex-usage-companion-0.2.0.plasmoid
 ```
 
 若啟用登入時自動啟動，自動啟動項目會使用 `/snap/bin/claude-codex-usage-companion`。此路徑在 snap 更新後保持不變。
@@ -240,8 +240,8 @@ kpackagetool6 --type Plasma/Applet --install /snap/claude-codex-usage-companion/
 解壓縮封存檔，並將程式複製到 `PATH` 中的目錄：
 
 ```bash
-tar -xzf claude-codex-usage-companion-0.1.5-linux-x64.tar.gz
-cd claude-codex-usage-companion-0.1.5-linux-x64
+tar -xzf claude-codex-usage-companion-0.2.0-linux-x64.tar.gz
+cd claude-codex-usage-companion-0.2.0-linux-x64
 install -D -m 755 claude-codex-usage-companion ~/.local/bin/claude-codex-usage-companion
 ```
 
@@ -256,14 +256,14 @@ install -D -m 755 claude-codex-usage-companion ~/.local/bin/claude-codex-usage-c
 此套件適用於 snap 或可攜式封存檔。`.deb` 已包含小工具，請勿與 `.deb` 一併使用。可不使用 root 安裝：
 
 ```bash
-kpackagetool6 --type Plasma/Applet --install ./claude-codex-usage-companion-0.1.5.plasmoid
+kpackagetool6 --type Plasma/Applet --install ./claude-codex-usage-companion-0.2.0.plasmoid
 ```
 
 若要更新已安裝的小工具，請以 `--upgrade` 取代 `--install`。小工具需要可從 `PATH` 執行 `claude-codex-usage-companion` 指令。
 
 ### Codex plugin
 
-Linux release 建置會產生 `CodexUsageCompanionMarketplace-v0.1.5-linux-x64.zip`。請解壓縮此檔案。使用下列命令加入解壓縮的 marketplace：
+Linux release 建置會產生 `CodexUsageCompanionMarketplace-v0.2.0-linux-x64.zip`。請解壓縮此檔案。使用下列命令加入解壓縮的 marketplace：
 
 ```bash
 codex plugin marketplace add /path/to/extracted-marketplace
