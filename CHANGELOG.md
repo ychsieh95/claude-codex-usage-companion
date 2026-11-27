@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-11-27
+
 ### Added
 
 - A **Rings** design for the desktop panel under **Settings → Appearance → Design**. Each provider shows a circular progress ring that fills with the remaining share; with both limits shown, the outer ring is the current or 5-hour limit and the inner, lighter ring is the weekly limit. Both percentages appear in the center, with each limit's name and reset countdown to the right. The even-pace pointer is a dot on the ring.
@@ -193,6 +195,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - No telemetry. This app never stores or writes authentication tokens of its own; when Claude usage is enabled, it reads the OAuth access token Claude Code already stores locally and sends it only to Anthropic's official API over HTTPS.
 
+[0.2.2]: https://github.com/ychsieh95/claude-codex-usage-companion/releases/tag/v0.2.2
 [0.2.1]: https://github.com/ychsieh95/claude-codex-usage-companion/releases/tag/v0.2.1
 [0.2.0]: https://github.com/ychsieh95/claude-codex-usage-companion/releases/tag/v0.2.0
 [0.1.5]: https://github.com/ychsieh95/claude-codex-usage-companion/releases/tag/v0.1.5
