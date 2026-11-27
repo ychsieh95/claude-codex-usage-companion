@@ -11,9 +11,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Added
 
 - An update section in the tray menu. **Check for updates** checks immediately, even when automatic checks are off, and shows the result in a desktop notification. When this installation can install the update, the notification has an **Install now** button and nothing is downloaded until you select it; otherwise it shows the release page link. **Check for updates automatically** turns automatic checks on or off, the same as **Settings → Updates**.
+- Update progress. **Settings → Updates** shows each step of an update with a progress bar: checking the signature, downloading (with megabytes and percentage), verifying the download, and installing. **Install now** in a notification keeps one notification up to date the same way and ends it with the result.
+- A **Reinstall latest version** button in **Settings → Updates**. It checks for the latest release and installs it, also when it is the version already installed, so a damaged installation can be repaired.
+
+### Changed
+
+- The READMEs are shorter. Feature details moved to a user guide (`docs/USER-GUIDE.md`) and build, test, and release details to a development guide (`docs/DEVELOPMENT.md`), each in English, Traditional Chinese, and Simplified Chinese. The portable archive and the Codex plugin include the user guides.
 
 ### Fixed
 
+- The desktop panel screenshots showed black behind the panel's rounded corners. They now have transparent corners.
 - Installing a `.deb` update could fail with "apt-get exited with code 100" even though the package installed, leaving the old version running. This happened when the app had been started from a terminal that was later closed: apt-get inherited the closed terminal and could not write its output. The app now gives the installer its own input and output, so the update completes and the app restarts.
 
 ## [0.2.2] - 2026-11-27
