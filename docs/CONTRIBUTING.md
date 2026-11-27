@@ -27,7 +27,7 @@ bash scripts/build-linux.sh
 
 If you change `snap/snapcraft.yaml`, `packaging/snap/`, or `scripts/build-snap.sh`, also run `bash scripts/build-snap.sh`. It needs snapcraft and LXD, or an Ubuntu 24.04 host with `SNAPCRAFT_ARGS=--destructive-mode`.
 
-Keep changes focused, add regression tests for behavior changes, and do not commit generated output, logs, user settings, credentials, or local paths. For GUI lifecycle changes, manually verify minimize, settings save, tray enable/disable, hide-to-tray, tray restore, tray tooltip, tray quit, autostart enable/disable, language switching, nine-position preview/save/cancel behavior, usage logging enable/disable plus TXT/CSV/JSONL output and custom paths, and always-on-top behavior. Keep `README.md`, `README.zh-TW.md`, and `README.zh-CN.md` structurally equivalent whenever documentation changes.
+Keep changes focused, add regression tests for behavior changes, and do not commit generated output, logs, user settings, credentials, or local paths. For GUI lifecycle changes, manually verify minimize, settings save, tray enable/disable, hide-to-tray, tray restore, tray tooltip, tray quit, autostart enable/disable, language switching, nine-position preview/save/cancel behavior, usage logging enable/disable plus TXT/CSV/JSONL output and custom paths, and always-on-top behavior. Keep the English, Traditional Chinese, and Simplified Chinese versions of `README`, `docs/USER-GUIDE`, and `docs/DEVELOPMENT` structurally equivalent whenever documentation changes. See [Documentation style](DEVELOPMENT.md#documentation-style).
 
 ## KDE shutdown regression check
 

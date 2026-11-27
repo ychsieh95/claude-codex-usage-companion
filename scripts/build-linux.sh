@@ -129,11 +129,12 @@ ok "Plasma widget package created: $PLASMOID"
 
 info "Building the portable archive."
 PORTABLE_ROOT="$ARTIFACTS/portable/claude-codex-usage-companion-$VERSION-$RID"
-mkdir -p "$PORTABLE_ROOT/assets/screenshots"
+mkdir -p "$PORTABLE_ROOT/assets/screenshots" "$PORTABLE_ROOT/docs"
 install -m 755 "$PUBLISH/CodexUsageCompanion" "$PORTABLE_ROOT/claude-codex-usage-companion"
 install -m 644 "$ROOT/README.md" "$PORTABLE_ROOT/README.md"
 install -m 644 "$ROOT/README.zh-TW.md" "$PORTABLE_ROOT/README.zh-TW.md"
 install -m 644 "$ROOT/README.zh-CN.md" "$PORTABLE_ROOT/README.zh-CN.md"
+install -m 644 "$ROOT/docs/USER-GUIDE"*.md "$PORTABLE_ROOT/docs/"
 install -m 644 "$ROOT/assets/screenshots/"*.png "$PORTABLE_ROOT/assets/screenshots/"
 install -m 644 "$ROOT/docs/PRIVACY.md" "$PORTABLE_ROOT/PRIVACY.md"
 install -m 644 "$ROOT/docs/SECURITY.md" "$PORTABLE_ROOT/SECURITY.md"
@@ -150,7 +151,8 @@ mkdir -p \
   "$PLUGIN/.codex-plugin" \
   "$PLUGIN/hooks" \
   "$PLUGIN/bin/$RID" \
-  "$PLUGIN/assets/screenshots"
+  "$PLUGIN/assets/screenshots" \
+  "$PLUGIN/docs"
 install -m 644 "$ROOT/packaging/marketplace.json" \
   "$MARKETPLACE/.agents/plugins/marketplace.json"
 install -m 644 "$ROOT/.codex-plugin/plugin.json" "$PLUGIN/.codex-plugin/plugin.json"
@@ -158,6 +160,7 @@ install -m 644 "$ROOT/hooks/hooks.json" "$PLUGIN/hooks/hooks.json"
 install -m 644 "$ROOT/README.md" "$PLUGIN/README.md"
 install -m 644 "$ROOT/README.zh-TW.md" "$PLUGIN/README.zh-TW.md"
 install -m 644 "$ROOT/README.zh-CN.md" "$PLUGIN/README.zh-CN.md"
+install -m 644 "$ROOT/docs/USER-GUIDE"*.md "$PLUGIN/docs/"
 install -m 644 "$ROOT/LICENSE" "$PLUGIN/LICENSE"
 install -m 644 "$ROOT/docs/PRIVACY.md" "$PLUGIN/PRIVACY.md"
 install -m 644 "$ROOT/docs/SECURITY.md" "$PLUGIN/SECURITY.md"
