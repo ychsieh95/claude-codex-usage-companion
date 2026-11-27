@@ -66,7 +66,7 @@ foreach (var (design, overlayFilename) in new[]
     window.SetStatus(updated, null, UsageProvider.Claude);
     window.SetStatus(updated, null, UsageProvider.Codex);
     window.Show();
-    Capture(window, overlayFilename);
+    Capture(window, overlayFilename, transparent: true);
     window.Close();
     if (design != OverlayDesignOptions.Latest)
         continue;
@@ -88,7 +88,7 @@ foreach (var (design, overlayFilename) in new[]
     settings.Close();
 }
 
-void Capture(Window target, string filename)
+void Capture(Window target, string filename, bool transparent = false)
 {
     // Modal controls may need another layout pass after the window opens.
     for (var pass = 0; pass < 3; pass++)
@@ -96,9 +96,28 @@ void Capture(Window target, string filename)
         Dispatcher.UIThread.RunJobs();
         AvaloniaHeadlessPlatform.ForceRenderTimerTick();
     }
-    using var frame = target.CaptureRenderedFrame()
-        ?? throw new InvalidOperationException("Screenshot rendering failed.");
+    // The headless platform has no window transparency, so the window template paints a
+    // black fallback behind the overlay's rounded corners and shadow. Hide it and render to
+    // an alpha bitmap, since the headless frame buffer is opaque.
+    if (transparent)
+    {
+        foreach (var fallback in target.GetVisualDescendants().OfType<Border>()
+            .Where(border => border.Name == "PART_TransparencyFallback"))
+            fallback.IsVisible = false;
+    }
+    using Bitmap frame = transparent
+        ? RenderTransparent(target)
+        : target.CaptureRenderedFrame()
+            ?? throw new InvalidOperationException("Screenshot rendering failed.");
     using var output = File.Create(Path.Combine(args[0], filename));
     frame.Save(output, PngBitmapEncoderOptions.Default);
     Console.WriteLine($"Captured {filename} ({frame.PixelSize})");
+}
+
+static RenderTargetBitmap RenderTransparent(Window target)
+{
+    var size = new PixelSize((int)Math.Ceiling(target.Bounds.Width), (int)Math.Ceiling(target.Bounds.Height));
+    var bitmap = new RenderTargetBitmap(size);
+    bitmap.Render(target);
+    return bitmap;
 }
