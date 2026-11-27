@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-11-27
+
 ### Added
 
 - Automatic update installation. **Settings → Updates** has an **Install update** button and an **Automatically download and install updates** option, which is off by default. A portable install replaces its own file and restarts. A `.deb` install downloads in the background, then asks in a notification with **Install now**, and installs with `pkexec apt-get` after you enter your administrator password. Snap and Codex plugin installs still open the release page.
@@ -184,6 +186,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - No telemetry. This app never stores or writes authentication tokens of its own; when Claude usage is enabled, it reads the OAuth access token Claude Code already stores locally and sends it only to Anthropic's official API over HTTPS.
 
+[0.2.1]: https://github.com/ychsieh95/claude-codex-usage-companion/releases/tag/v0.2.1
 [0.2.0]: https://github.com/ychsieh95/claude-codex-usage-companion/releases/tag/v0.2.0
 [0.1.5]: https://github.com/ychsieh95/claude-codex-usage-companion/releases/tag/v0.1.5
 [0.1.4]: https://github.com/ychsieh95/claude-codex-usage-companion/releases/tag/v0.1.4
