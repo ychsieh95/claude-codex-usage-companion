@@ -32,6 +32,17 @@ public sealed class AppUpdateCheckerTests
         Assert.False(AppUpdateChecker.ParseRelease(json.RootElement, "0.1.3").UpdateAvailable);
     }
 
+    [Theory]
+    [InlineData("v0.2.3", "0.2.3", false, true)]
+    [InlineData("v0.2.4", "0.2.3", false, false)]
+    [InlineData("v0.2.3", "0.2.4", false, false)]
+    [InlineData("v0.2.3", "0.2.3", true, false)]
+    public void MarksTheInstalledVersionForReinstall(string tag, string current, bool prerelease, bool expected)
+    {
+        using var json = JsonDocument.Parse(JsonSerializer.Serialize(new { tag_name = tag, draft = false, prerelease }));
+        Assert.Equal(expected, AppUpdateChecker.ParseRelease(json.RootElement, current).IsInstalledVersion);
+    }
+
     [Fact]
     public void RejectsMalformedVersion()
     {

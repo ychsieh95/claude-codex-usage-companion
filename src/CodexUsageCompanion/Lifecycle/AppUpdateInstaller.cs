@@ -12,6 +12,27 @@ namespace CodexUsageCompanion.Lifecycle;
 
 public sealed record PreparedUpdate(string Version, InstallKind Kind, string PackagePath);
 
+public enum UpdateStage
+{
+    /// <summary>Downloading SHA256SUMS and checking its signature.</summary>
+    VerifyingSignature,
+    /// <summary>Downloading the package. <see cref="UpdateProgress.BytesReceived"/> counts the bytes so far.</summary>
+    Downloading,
+    /// <summary>Checking the package against its signed checksum.</summary>
+    VerifyingPackage,
+    /// <summary>The package matches its signed checksum and is being installed.</summary>
+    Installing
+}
+
+/// <summary>Where an update download or install is. <see cref="TotalBytes"/> is null when the server does not send a size.</summary>
+public sealed record UpdateProgress(UpdateStage Stage, long BytesReceived = 0, long? TotalBytes = null)
+{
+    /// <summary>The downloaded share from 0 to 1, or null when it cannot be known.</summary>
+    public double? Fraction => Stage == UpdateStage.Downloading && TotalBytes > 0
+        ? Math.Clamp((double)BytesReceived / TotalBytes.Value, 0, 1)
+        : null;
+}
+
 public sealed class UpdateInstallException(string message, bool cancelled = false, Exception? inner = null)
     : Exception(message, inner)
 {
@@ -30,6 +51,7 @@ public sealed class AppUpdateInstaller
     public const string SignatureName = "SHA256SUMS.sig";
     private const long MaxPackageBytes = 512L * 1024 * 1024;
     private const long MaxMetadataBytes = 64 * 1024;
+    private static readonly TimeSpan ProgressInterval = TimeSpan.FromMilliseconds(100);
 
     private static readonly HttpClient DefaultClient = new() { Timeout = TimeSpan.FromMinutes(10) };
     private readonly HttpClient _client;
@@ -73,9 +95,13 @@ public sealed class AppUpdateInstaller
         };
     }
 
-    /// <summary>True when the release has a signed package that this installation can install.</summary>
-    public bool CanInstall(AppUpdateResult result) =>
-        result.UpdateAvailable &&
+    /// <summary>True when the release is newer and has a signed package that this installation can install.</summary>
+    public bool CanInstall(AppUpdateResult result) => result.UpdateAvailable && HasInstallablePackage(result);
+
+    /// <summary>True when the release is the installed version and has a signed package to install again.</summary>
+    public bool CanReinstall(AppUpdateResult result) => result.IsInstalledVersion && HasInstallablePackage(result);
+
+    private bool HasInstallablePackage(AppUpdateResult result) =>
         InstallKindDetector.SupportsInstall(Kind) &&
         !string.IsNullOrWhiteSpace(TargetPath) &&
         PackageName(result.Version) is { } name &&
@@ -84,11 +110,16 @@ public sealed class AppUpdateInstaller
         result.AssetNames.Contains(SignatureName);
 
     /// <summary>Downloads and verifies the package. Reuses an already verified download of the same version.</summary>
-    public async Task<PreparedUpdate> DownloadAsync(AppUpdateResult result, CancellationToken cancellationToken = default)
+    public async Task<PreparedUpdate> DownloadAsync(
+        AppUpdateResult result,
+        IProgress<UpdateProgress>? progress = null,
+        CancellationToken cancellationToken = default)
     {
-        if (!CanInstall(result))
+        if (!CanInstall(result) && !CanReinstall(result))
             throw new UpdateInstallException("This installation cannot install the update automatically.");
         var name = PackageName(result.Version)!;
+
+        progress?.Report(new(UpdateStage.VerifyingSignature));
 
         var checksums = await DownloadBytesAsync(result.Version, ChecksumsName, MaxMetadataBytes, cancellationToken);
         var signature = await DownloadBytesAsync(result.Version, SignatureName, MaxMetadataBytes, cancellationToken);
@@ -99,8 +130,12 @@ public sealed class AppUpdateInstaller
 
         var versionDirectory = Path.Combine(_cacheDirectory, SafeSegment(result.Version));
         var packagePath = Path.Combine(versionDirectory, name);
-        if (File.Exists(packagePath) && await HashFileAsync(packagePath, cancellationToken) == expectedHash)
-            return new(result.Version, Kind, packagePath);
+        if (File.Exists(packagePath))
+        {
+            progress?.Report(new(UpdateStage.VerifyingPackage));
+            if (await HashFileAsync(packagePath, cancellationToken) == expectedHash)
+                return new(result.Version, Kind, packagePath);
+        }
 
         // Keep only one downloaded version.
         if (Directory.Exists(_cacheDirectory)) Directory.Delete(_cacheDirectory, recursive: true);
@@ -111,12 +146,27 @@ public sealed class AppUpdateInstaller
             using var response = await _client.GetAsync(DownloadUrl(result.Version, name),
                 HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             response.EnsureSuccessStatusCode();
-            if (response.Content.Headers.ContentLength > MaxPackageBytes)
+            var totalBytes = response.Content.Headers.ContentLength;
+            if (totalBytes > MaxPackageBytes)
                 throw new UpdateInstallException("The update package is too large.");
             await using var input = await response.Content.ReadAsStreamAsync(cancellationToken);
-            await CopyWithLimitAsync(input, output, MaxPackageBytes, cancellationToken);
+            Action<long, bool>? onCopied = null;
+            if (progress is not null)
+            {
+                progress.Report(new(UpdateStage.Downloading, 0, totalBytes));
+                // Report at most every ProgressInterval so a fast download does not flood the UI.
+                var sinceReport = Stopwatch.StartNew();
+                onCopied = (copied, finished) =>
+                {
+                    if (!finished && sinceReport.Elapsed < ProgressInterval) return;
+                    sinceReport.Restart();
+                    progress.Report(new(UpdateStage.Downloading, copied, totalBytes));
+                };
+            }
+            await CopyWithLimitAsync(input, output, MaxPackageBytes, cancellationToken, onCopied);
         }
 
+        progress?.Report(new(UpdateStage.VerifyingPackage));
         if (await HashFileAsync(partialPath, cancellationToken) != expectedHash)
         {
             File.Delete(partialPath);
@@ -128,7 +178,8 @@ public sealed class AppUpdateInstaller
 
     /// <summary>
     /// Installs a verified package. A portable binary is replaced in place. A .deb is installed with
-    /// <c>pkexec apt-get</c>, which shows the desktop's administrator password prompt.
+    /// <c>pkexec apt-get</c>, which shows the desktop's administrator password prompt. <c>--reinstall</c>
+    /// makes apt-get install the package even when the same version is already installed.
     /// </summary>
     public async Task InstallAsync(PreparedUpdate update, CancellationToken cancellationToken = default)
     {
@@ -142,7 +193,7 @@ public sealed class AppUpdateInstaller
                 try
                 {
                     exitCode = await _runElevated("pkexec",
-                        ["/usr/bin/apt-get", "install", "-y", Path.GetFullPath(update.PackagePath)], cancellationToken);
+                        ["/usr/bin/apt-get", "install", "--reinstall", "-y", Path.GetFullPath(update.PackagePath)], cancellationToken);
                 }
                 catch (Win32Exception exception)
                 {
@@ -228,7 +279,8 @@ public sealed class AppUpdateInstaller
         AppUpdateChecker.RepositoryUrl + "/releases/download/" +
         Uri.EscapeDataString(version) + "/" + Uri.EscapeDataString(name));
 
-    private static async Task CopyWithLimitAsync(Stream input, Stream output, long limit, CancellationToken cancellationToken)
+    private static async Task CopyWithLimitAsync(Stream input, Stream output, long limit,
+        CancellationToken cancellationToken, Action<long, bool>? onCopied = null)
     {
         var buffer = new byte[81920];
         long total = 0;
@@ -238,7 +290,9 @@ public sealed class AppUpdateInstaller
             total += read;
             if (total > limit) throw new UpdateInstallException("The update download is too large.");
             await output.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
+            onCopied?.Invoke(total, false);
         }
+        onCopied?.Invoke(total, true);
     }
 
     private static async Task<string> HashFileAsync(string path, CancellationToken cancellationToken)

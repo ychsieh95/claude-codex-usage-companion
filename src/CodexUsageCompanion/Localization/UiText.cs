@@ -60,8 +60,33 @@ public sealed record UiText(
     public string FormatAppUpdate(string version) => UpdateText($"Version {version} is available.", $"有新版本 {version} 可用。", $"有新版本 {version} 可用。");
     public string AutoInstallUpdatesOption => UpdateText("Automatically download and install updates", "自動下載並安裝更新", "自动下载并安装更新");
     public string InstallUpdateAction => UpdateText("Install update", "安裝更新", "安装更新");
+    public string ReinstallLatestAction => UpdateText("Reinstall latest version", "重新安裝最新版本", "重新安装最新版本");
+    public string ReinstallUnavailable => UpdateText(
+        "This copy cannot reinstall itself. Open the release page to reinstall.",
+        "此副本無法自行重新安裝。請開啟版本頁面重新安裝。",
+        "此副本无法自行重新安装。请打开版本页面重新安装。");
     public string InstallNowAction => UpdateText("Install now", "立即安裝", "立即安装");
-    public string DownloadingUpdate => UpdateText("Downloading and verifying the update…", "正在下載並驗證更新…", "正在下载并验证更新…");
+    public string FormatUpdateProgress(UpdateProgress progress) => progress.Stage switch
+    {
+        UpdateStage.VerifyingSignature => UpdateText(
+            "Checking the update signature…", "正在檢查更新簽章…", "正在检查更新签名…"),
+        UpdateStage.Downloading when progress.TotalBytes is > 0 and var total => UpdateText(
+            $"Downloading the update… {FormatMegabytes(progress.BytesReceived)} of {FormatMegabytes(total)} ({FormatPercent(progress)})",
+            $"正在下載更新… {FormatMegabytes(progress.BytesReceived)} / {FormatMegabytes(total)}（{FormatPercent(progress)}）",
+            $"正在下载更新… {FormatMegabytes(progress.BytesReceived)} / {FormatMegabytes(total)}（{FormatPercent(progress)}）"),
+        UpdateStage.Downloading => UpdateText(
+            $"Downloading the update… {FormatMegabytes(progress.BytesReceived)}",
+            $"正在下載更新… {FormatMegabytes(progress.BytesReceived)}",
+            $"正在下载更新… {FormatMegabytes(progress.BytesReceived)}"),
+        UpdateStage.VerifyingPackage => UpdateText(
+            "Verifying the download against its signed checksum…", "正在依已簽署的總和檢查碼驗證下載內容…", "正在根据已签名的校验和验证下载内容…"),
+        _ => UpdateText(
+            "The update is verified. Installing…", "更新已通過驗證。正在安裝…", "更新已通过验证。正在安装…")
+    };
+    private static string FormatPercent(UpdateProgress progress) =>
+        ((int)Math.Floor((progress.Fraction ?? 0) * 100)).ToString(CultureInfo.InvariantCulture) + "%";
+    private static string FormatMegabytes(long bytes) =>
+        (bytes / (1024d * 1024d)).ToString("0.0", CultureInfo.InvariantCulture) + " MB";
     public string InstallingUpdate => UpdateText("Installing the update…", "正在安裝更新…", "正在安装更新…");
     public string UpdateInstallFailed => UpdateText(
         "Unable to install the update. Open the release page to update manually.",

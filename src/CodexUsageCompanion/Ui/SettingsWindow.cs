@@ -473,25 +473,75 @@ public sealed class SettingsWindow : Window
         var installKindHint = Hint(text.InstallKindHint(_updateInstaller.Kind));
         var checkUpdate = new Button { Content = text.CheckForUpdatesAction };
         var updateStatus = new TextBlock { TextWrapping = TextWrapping.Wrap };
+        var updateProgress = new ProgressBar { Minimum = 0, Maximum = 1, IsVisible = false };
         var openRelease = new Button { Content = text.OpenReleaseAction, IsVisible = false };
         var installUpdate = new Button { Content = text.InstallUpdateAction, IsVisible = false };
+        // Checks for the latest release and installs it, also when it is the installed version.
+        var reinstall = new Button { Content = text.ReinstallLatestAction, IsVisible = canSelfUpdate };
         Uri? releaseUrl = null;
         AppUpdateResult? availableUpdate = null;
-        installUpdate.Click += async (_, _) =>
+        // Installs the checked release: an update, or the installed version again.
+        async Task InstallCheckedReleaseAsync()
         {
             if (availableUpdate is null || InstallUpdateRequested is not { } install) return;
             checkUpdate.IsEnabled = false;
             installUpdate.IsEnabled = false;
+            reinstall.IsEnabled = false;
+            // Progress<T> posts each report back to the UI thread.
+            var progress = new Progress<UpdateProgress>(report =>
+            {
+                updateStatus.Text = text.FormatUpdateProgress(report);
+                updateProgress.IsVisible = true;
+                // Only the download has a known share; the other stages show an indeterminate bar.
+                updateProgress.IsIndeterminate = report.Fraction is null;
+                updateProgress.Value = report.Fraction ?? 0;
+            });
             try
             {
-                var error = await install(availableUpdate, status => updateStatus.Text = status);
+                var error = await install(availableUpdate, progress);
                 if (error is not null) updateStatus.Text = error;
             }
             finally
             {
+                updateProgress.IsVisible = false;
                 checkUpdate.IsEnabled = true;
                 installUpdate.IsEnabled = true;
+                reinstall.IsEnabled = true;
             }
+        }
+        installUpdate.Click += async (_, _) => await InstallCheckedReleaseAsync();
+        reinstall.Click += async (_, _) =>
+        {
+            checkUpdate.IsEnabled = false;
+            reinstall.IsEnabled = false;
+            openRelease.IsVisible = false;
+            installUpdate.IsVisible = false;
+            updateStatus.Text = text.CheckingForUpdates;
+            AppUpdateResult result;
+            try
+            {
+                result = await _updateChecker.CheckAsync(_updateCancellation.Token);
+            }
+            catch (OperationCanceledException) when (_updateCancellation.IsCancellationRequested) { return; }
+            catch (Exception)
+            {
+                updateStatus.Text = text.UpdateCheckFailed;
+                checkUpdate.IsEnabled = true;
+                reinstall.IsEnabled = true;
+                return;
+            }
+            releaseUrl = result.ReleaseUrl;
+            availableUpdate = result;
+            // A newer release is the latest version, so installing it is the reinstall.
+            if (_updateInstaller.CanInstall(result) || _updateInstaller.CanReinstall(result))
+            {
+                await InstallCheckedReleaseAsync();
+                return;
+            }
+            updateStatus.Text = text.ReinstallUnavailable;
+            openRelease.IsVisible = true;
+            checkUpdate.IsEnabled = true;
+            reinstall.IsEnabled = true;
         };
         openRelease.Click += async (_, _) =>
         {
@@ -509,6 +559,7 @@ public sealed class SettingsWindow : Window
         checkUpdate.Click += async (_, _) =>
         {
             checkUpdate.IsEnabled = false;
+            reinstall.IsEnabled = false;
             openRelease.IsVisible = false;
             installUpdate.IsVisible = false;
             updateStatus.Text = text.CheckingForUpdates;
@@ -526,7 +577,11 @@ public sealed class SettingsWindow : Window
             {
                 updateStatus.Text = text.UpdateCheckFailed;
             }
-            finally { checkUpdate.IsEnabled = true; }
+            finally
+            {
+                checkUpdate.IsEnabled = true;
+                reinstall.IsEnabled = true;
+            }
         };
         Closed += (_, _) => _updateCancellation.Cancel();
         var fontSizeControls = new Grid
@@ -583,8 +638,8 @@ public sealed class SettingsWindow : Window
             {
                 Orientation = Orientation.Horizontal,
                 Spacing = 8,
-                Children = { checkUpdate, installUpdate, openRelease }
-            }, updateStatus),
+                Children = { checkUpdate, installUpdate, reinstall, openRelease }
+            }, updateProgress, updateStatus),
             Row(text.AboutLabel,
                 new TextBlock { Text = $"Claude Codex Usage Companion v{appVersion}", TextWrapping = TextWrapping.Wrap },
                 LinkLine(text.ProjectLinkLabel, AppUpdateChecker.RepositoryUrl),
@@ -712,7 +767,7 @@ public sealed class SettingsWindow : Window
     public event Func<CompanionSettings, bool>? ApplyRequested;
 
     /// <summary>Downloads and installs an update. Returns an error message, or null when the app restarts.</summary>
-    public event Func<AppUpdateResult, Action<string>, Task<string?>>? InstallUpdateRequested;
+    public event Func<AppUpdateResult, IProgress<UpdateProgress>, Task<string?>>? InstallUpdateRequested;
 
     private async Task ConfirmResetDefaultsAsync()
     {

@@ -100,6 +100,60 @@ public sealed class AppUpdateInstallerTests : IDisposable
     }
 
     [Fact]
+    public async Task ReportsEachStageAndTheDownloadedBytes()
+    {
+        var package = PortableArchive("new"u8.ToArray());
+        var installer = Installer(InstallKind.Portable, SignedFiles(TarName, package));
+        var reports = new RecordingProgress();
+
+        await installer.DownloadAsync(FullRelease(TarName), reports);
+
+        Assert.Equal(UpdateStage.VerifyingSignature, reports.Items[0].Stage);
+        Assert.Equal(new UpdateProgress(UpdateStage.Downloading, 0, package.Length), reports.Items[1]);
+        var last = reports.Items[^2];
+        Assert.Equal(new UpdateProgress(UpdateStage.Downloading, package.Length, package.Length), last);
+        Assert.Equal(1, last.Fraction);
+        Assert.Equal(UpdateStage.VerifyingPackage, reports.Items[^1].Stage);
+        Assert.Null(reports.Items[^1].Fraction);
+    }
+
+    [Fact]
+    public async Task ReportsOnlyVerificationWhenReusingADownload()
+    {
+        var installer = Installer(InstallKind.Portable, SignedFiles(TarName, PortableArchive("new"u8.ToArray())));
+        await installer.DownloadAsync(FullRelease(TarName));
+        var reports = new RecordingProgress();
+
+        await installer.DownloadAsync(FullRelease(TarName), reports);
+
+        Assert.Equal([UpdateStage.VerifyingSignature, UpdateStage.VerifyingPackage],
+            reports.Items.Select(item => item.Stage));
+    }
+
+    [Fact]
+    public async Task ReinstallsTheInstalledVersion()
+    {
+        var target = Path.Combine(_root, "app", "claude-codex-usage-companion");
+        Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+        await File.WriteAllTextAsync(target, "damaged");
+        var installer = Installer(InstallKind.Portable, SignedFiles(TarName, PortableArchive("same"u8.ToArray())), target);
+        var installed = FullRelease(TarName) with { UpdateAvailable = false, IsInstalledVersion = true };
+
+        await installer.InstallAsync(await installer.DownloadAsync(installed));
+
+        Assert.Equal("same", await File.ReadAllTextAsync(target));
+    }
+
+    [Fact]
+    public async Task RefusesToDownloadAnOlderRelease()
+    {
+        var installer = Installer(InstallKind.Portable, SignedFiles(TarName, PortableArchive("old"u8.ToArray())));
+
+        await Assert.ThrowsAsync<UpdateInstallException>(() =>
+            installer.DownloadAsync(FullRelease(TarName) with { UpdateAvailable = false }));
+    }
+
+    [Fact]
     public async Task RejectsAnInvalidSignature()
     {
         var files = SignedFiles(TarName, PortableArchive("new"u8.ToArray()));
@@ -150,7 +204,7 @@ public sealed class AppUpdateInstallerTests : IDisposable
         await installer.InstallAsync(prepared);
 
         Assert.Equal("pkexec", program);
-        Assert.Equal(["/usr/bin/apt-get", "install", "-y", prepared.PackagePath], arguments);
+        Assert.Equal(["/usr/bin/apt-get", "install", "--reinstall", "-y", prepared.PackagePath], arguments);
         Assert.EndsWith(DebName, prepared.PackagePath);
     }
 
@@ -197,6 +251,11 @@ public sealed class AppUpdateInstallerTests : IDisposable
         Assert.False(installer.CanInstall(Release(TarName, AppUpdateInstaller.ChecksumsName)));
         Assert.False(installer.CanInstall(Release(DebName, AppUpdateInstaller.ChecksumsName, AppUpdateInstaller.SignatureName)));
         Assert.False(installer.CanInstall(FullRelease(TarName) with { UpdateAvailable = false }));
+        Assert.False(installer.CanReinstall(FullRelease(TarName)));
+        var installed = FullRelease(TarName) with { UpdateAvailable = false, IsInstalledVersion = true };
+        Assert.True(installer.CanReinstall(installed));
+        Assert.False(installer.CanInstall(installed));
+        Assert.False(installer.CanReinstall(Release(TarName, AppUpdateInstaller.ChecksumsName) with { UpdateAvailable = false, IsInstalledVersion = true }));
         Assert.True(installer.CanInstall(FullRelease(TarName)));
     }
 
@@ -262,6 +321,13 @@ public sealed class AppUpdateInstallerTests : IDisposable
         key.ImportFromPem(pem);
         Assert.Equal(256, key.KeySize);
         Assert.False(UpdateSignature.Verify("data"u8.ToArray(), new byte[70]));
+    }
+
+    // Records reports synchronously, unlike Progress<T>, which posts them.
+    private sealed class RecordingProgress : IProgress<UpdateProgress>
+    {
+        public List<UpdateProgress> Items { get; } = [];
+        public void Report(UpdateProgress value) => Items.Add(value);
     }
 
     private sealed class FileHandler(Dictionary<string, byte[]> files) : HttpMessageHandler

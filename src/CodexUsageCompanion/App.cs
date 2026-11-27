@@ -479,7 +479,7 @@ public sealed class App : Application
         dialog.PositionPreviewRequested += _window.ApplyPosition;
         dialog.AppearancePreviewRequested += _window.ApplyAppearance;
         dialog.ApplyRequested += TryApplySettings;
-        dialog.InstallUpdateRequested += InstallUpdateAsync;
+        dialog.InstallUpdateRequested += (result, progress) => InstallUpdateAsync(result, progress);
         _settingsWindow = dialog;
         try
         {
@@ -943,16 +943,24 @@ public sealed class App : Application
             var accepted = await _notificationService.ShowWithActionAsync(title,
                 _text.FormatAppUpdate(result.Version), _text.InstallNowAction, _updateCancellation.Token);
             if (accepted == true && !_shutdownRequested)
-            {
-                var error = await InstallUpdateAsync(result, _ => { });
-                if (error is not null)
-                    _notificationService.Show(title, error + "\n" + result.ReleaseUrl, critical: false);
-            }
+                await InstallWithProgressNotificationAsync(result);
             // null means the notification cannot show an action, so fall back to the release link.
             if (accepted is not null) return;
         }
         _notificationService.Show(title,
             _text.FormatAppUpdate(result.Version) + "\n" + result.ReleaseUrl, critical: false);
+    }
+
+    // One notification follows the download and install, and then shows the result.
+    private async Task InstallWithProgressNotificationAsync(AppUpdateResult result)
+    {
+        var notification = new UpdateProgressNotification(
+            (body, percent, replaceId, final) => _notificationService.ShowProgressAsync(
+                "Claude Codex Usage Companion", body, percent, replaceId, final),
+            _text.FormatUpdateProgress);
+        var error = await InstallUpdateAsync(result, notification, notification);
+        if (error is not null)
+            await notification.FinishAsync(error + "\n" + result.ReleaseUrl);
     }
 
     // Returns true when the update was handled, so the plain "update available" notification is not needed.
@@ -962,7 +970,7 @@ public sealed class App : Application
         PreparedUpdate prepared;
         try
         {
-            prepared = await _updateInstaller.DownloadAsync(result, _updateCancellation.Token);
+            prepared = await _updateInstaller.DownloadAsync(result, cancellationToken: _updateCancellation.Token);
         }
         catch (OperationCanceledException) when (_updateCancellation.IsCancellationRequested) { return true; }
         catch (Exception exception)
@@ -989,14 +997,15 @@ public sealed class App : Application
     }
 
     // Called by Settings. Returns an error message, or null when the update installed and the app is restarting.
-    private async Task<string?> InstallUpdateAsync(AppUpdateResult result, Action<string> reportStatus)
+    // A notification, when given, shows the "installed" result in place of a separate notification.
+    private async Task<string?> InstallUpdateAsync(
+        AppUpdateResult result, IProgress<UpdateProgress>? progress, UpdateProgressNotification? notification = null)
     {
         try
         {
-            reportStatus(_text.DownloadingUpdate);
-            var prepared = await _updateInstaller.DownloadAsync(result, _updateCancellation.Token);
-            reportStatus(_text.InstallingUpdate);
-            return await InstallPreparedUpdateAsync(prepared);
+            var prepared = await _updateInstaller.DownloadAsync(result, progress, _updateCancellation.Token);
+            progress?.Report(new(UpdateStage.Installing));
+            return await InstallPreparedUpdateAsync(prepared, notification);
         }
         catch (OperationCanceledException) when (_updateCancellation.IsCancellationRequested) { return null; }
         catch (Exception exception)
@@ -1006,7 +1015,8 @@ public sealed class App : Application
         }
     }
 
-    private async Task<string?> InstallPreparedUpdateAsync(PreparedUpdate prepared)
+    private async Task<string?> InstallPreparedUpdateAsync(
+        PreparedUpdate prepared, UpdateProgressNotification? notification = null)
     {
         if (_shutdownRequested) return null;
         if (_installingUpdate) return _text.InstallingUpdate;
@@ -1028,8 +1038,9 @@ public sealed class App : Application
         finally { _installingUpdate = false; }
 
         CompanionLog.Shared.Write("update-install", $"Installed version {prepared.Version}; restarting.");
-        _notificationService.Show("Claude Codex Usage Companion",
-            _text.FormatUpdateInstalled(prepared.Version), critical: false);
+        var installed = _text.FormatUpdateInstalled(prepared.Version);
+        if (notification is not null) await notification.FinishAsync(installed);
+        else _notificationService.Show("Claude Codex Usage Companion", installed, critical: false);
         if (_updateInstaller.TargetPath is { } path) DetachedLauncher.StartAfterExit(path);
         await ShutdownAsync();
         return null;

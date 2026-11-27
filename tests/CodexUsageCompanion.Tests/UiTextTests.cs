@@ -1,4 +1,5 @@
 using System.Globalization;
+using CodexUsageCompanion.Lifecycle;
 using CodexUsageCompanion.Localization;
 using CodexUsageCompanion.RateLimits;
 using Xunit;
@@ -19,6 +20,21 @@ public sealed class UiTextTests
     public void DurationRoundsUpToWholeMinutes(UiLanguage language, double minutes, string expected)
     {
         Assert.Equal(expected, UiText.For(language).FormatDuration(TimeSpan.FromMinutes(minutes)));
+    }
+
+    [Fact]
+    public void UpdateProgressShowsTheStageAndDownloadedSize()
+    {
+        var english = UiText.For(UiLanguage.English);
+        Assert.Equal("Downloading the update… 12.5 MB of 50.0 MB (25%)",
+            english.FormatUpdateProgress(new(UpdateStage.Downloading, 25 * 512 * 1024, 50 * 1024 * 1024)));
+        Assert.Equal("Downloading the update… 1.0 MB",
+            english.FormatUpdateProgress(new(UpdateStage.Downloading, 1024 * 1024)));
+        Assert.Equal("正在下載更新… 12.5 MB / 50.0 MB（25%）",
+            UiText.For(UiLanguage.TraditionalChinese).FormatUpdateProgress(
+                new(UpdateStage.Downloading, 25 * 512 * 1024, 50 * 1024 * 1024)));
+        Assert.Equal("Checking the update signature…", english.FormatUpdateProgress(new(UpdateStage.VerifyingSignature)));
+        Assert.Equal("The update is verified. Installing…", english.FormatUpdateProgress(new(UpdateStage.Installing)));
     }
 
     [Fact]

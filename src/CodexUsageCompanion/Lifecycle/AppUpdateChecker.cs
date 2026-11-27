@@ -8,6 +8,9 @@ public sealed record AppUpdateResult(string Version, bool UpdateAvailable, Uri R
 {
     /// <summary>The file names of the release assets. Download URLs are built from the trusted repository.</summary>
     public IReadOnlySet<string> AssetNames { get; init; } = new HashSet<string>();
+
+    /// <summary>True when <see cref="Version"/> is a stable release and the same version as this app, so it can be reinstalled.</summary>
+    public bool IsInstalledVersion { get; init; }
 }
 
 public sealed class AppUpdateChecker
@@ -49,7 +52,8 @@ public sealed class AppUpdateChecker
         return new(tag, stable && latest > current,
             new Uri(RepositoryUrl + "/releases/tag/" + Uri.EscapeDataString(tag)))
         {
-            AssetNames = assets
+            AssetNames = assets,
+            IsInstalledVersion = stable && latest == current
         };
     }
 
