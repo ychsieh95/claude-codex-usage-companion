@@ -301,6 +301,34 @@ public sealed class OverlayMergeTests
         window.Close();
     }, CancellationToken.None);
     [Fact]
+    public Task SettingsBadgeAverageDescriptionFollowsTheSelectedMethod() => Session.Dispatch(() =>
+    {
+        var text = UiText.For(UiLanguage.English);
+        var window = new SettingsWindow(new CompanionSettings
+        {
+            SettingsPage = SettingsPageOptions.Appearance,
+            BadgeAverage = BadgeAverageOptions.WindowLength
+        }, text);
+        try
+        {
+            window.Show();
+            string Description(string method) => text.BadgeAverageChoices.Single(choice => choice.Value == method).Description;
+            TextBlock? Shown(string method) => window.GetVisualDescendants().OfType<TextBlock>()
+                .SingleOrDefault(block => block.Text == Description(method));
+            Assert.NotNull(Shown(BadgeAverageOptions.WindowLength));
+
+            window.SelectBadgeAverage(BadgeAverageOptions.Pace);
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            Assert.NotNull(Shown(BadgeAverageOptions.Pace));
+            Assert.Null(Shown(BadgeAverageOptions.WindowLength));
+        }
+        finally
+        {
+            window.Close();
+        }
+    }, CancellationToken.None);
+
+    [Fact]
     public Task SettingsSidebarShowsOnePageAndRestoresItWithoutUnsavedEdits() => Session.Dispatch(() =>
     {
         var window = new SettingsWindow(new CompanionSettings { SettingsPage = SettingsPageOptions.Logging },
@@ -531,7 +559,8 @@ public sealed class OverlayMergeTests
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
         window.UpdateLayout();
         var status = window.GetVisualDescendants().OfType<TextBlock>()
-            .Single(text => text.Text == UiText.For(UiLanguage.English).WaitingForData && text.FontSize == 11);
+            .Single(text => text.IsEffectivelyVisible &&
+                text.Text == UiText.For(UiLanguage.English).WaitingForData && text.FontSize == 11);
         var bottom = status.TranslatePoint(new Point(0, status.Bounds.Height), window);
         Assert.NotNull(bottom);
         Assert.InRange(window.Height - bottom.Value.Y, 12.5, 13.5);
@@ -551,7 +580,8 @@ public sealed class OverlayMergeTests
             Avalonia.Threading.Dispatcher.UIThread.RunJobs();
             Assert.Equal(initialHeight, window.Height);
             var status = window.GetVisualDescendants().OfType<TextBlock>()
-                .Single(text => text.Text == UiText.For(UiLanguage.English).WaitingForData && text.FontSize == 11);
+                .Single(text => text.IsEffectivelyVisible &&
+                text.Text == UiText.For(UiLanguage.English).WaitingForData && text.FontSize == 11);
             var bottom = status.TranslatePoint(new Point(0, status.Bounds.Height), window);
             Assert.NotNull(bottom);
             Assert.InRange(window.Height - bottom.Value.Y, 12.5, 14.5);
@@ -597,7 +627,7 @@ public sealed class OverlayMergeTests
             var badge = window.GetVisualDescendants().OfType<Border>()
                 .Single(border => ToolTip.GetTip(border) is string tip && tip.StartsWith("Lowest remaining"));
             Assert.True(badge.IsEffectivelyVisible);
-            Assert.Equal("Lowest remaining: Claude Current week (All), 41%", ToolTip.GetTip(badge));
+            Assert.StartsWith("Lowest remaining: Claude Current week (All), 41%", (string)ToolTip.GetTip(badge)!);
             Assert.Contains(badge.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == "41");
             // The status line moves under the heading, so the bottom line stays hidden.
             Assert.Single(window.GetVisualDescendants().OfType<TextBlock>(),
@@ -823,11 +853,25 @@ public sealed class OverlayMergeTests
 
             window.ApplySettings(settings with { HeaderBadge = HeaderBadgeOptions.Average }, UiText.For(UiLanguage.English));
             Assert.Equal("54", Value());
-            Assert.Equal("Average remaining of 4 limits: 54%", ToolTip.GetTip(badge));
+            Assert.StartsWith("Average remaining of 4 limits: 54%", (string)ToolTip.GetTip(badge)!);
 
             window.ApplySettings(settings with { HeaderBadge = HeaderBadgeOptions.Claude }, UiText.For(UiLanguage.English));
             Assert.Equal("41", Value());
-            Assert.Equal("Lowest remaining: Claude Current week (All), 41%", ToolTip.GetTip(badge));
+            Assert.StartsWith("Lowest remaining: Claude Current week (All), 41%", (string)ToolTip.GetTip(badge)!);
+
+            window.ApplySettings(settings with { HeaderBadge = HeaderBadgeOptions.ClaudeSession }, UiText.For(UiLanguage.English));
+            Assert.Equal("68", Value());
+            Assert.StartsWith("Remaining: Claude Current session, 68%", (string)ToolTip.GetTip(badge)!);
+
+            window.ApplySettings(settings with { HeaderBadge = HeaderBadgeOptions.CodexAverage }, UiText.For(UiLanguage.English));
+            Assert.Equal("53", Value());
+            Assert.StartsWith("Average remaining of 2 Codex limits: 53%", (string)ToolTip.GetTip(badge)!);
+
+            // The pace gap shows as signed points, without the percent sign.
+            window.ApplySettings(settings with { HeaderBadge = HeaderBadgeOptions.Average, BadgeAverage = BadgeAverageOptions.Pace },
+                UiText.For(UiLanguage.English));
+            Assert.Equal("54", Value());
+            Assert.StartsWith("Average remaining of 4 limits: 54%", (string)ToolTip.GetTip(badge)!);
 
             window.ApplySettings(settings with { HeaderBadge = HeaderBadgeOptions.Hidden }, UiText.For(UiLanguage.English));
             Assert.False(badge.IsVisible);
@@ -837,6 +881,225 @@ public sealed class OverlayMergeTests
             window.Close();
         }
     }, CancellationToken.None);
+
+    [Fact]
+    public Task PaceGapBadgeShowsSignedPointsWithoutAPercentSign() => Session.Dispatch(() =>
+    {
+        var settings = new CompanionSettings
+        {
+            HeaderBadge = HeaderBadgeOptions.ClaudeAverage,
+            BadgeAverage = BadgeAverageOptions.Pace
+        };
+        var window = new UsageOverlayWindow(settings);
+        try
+        {
+            var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            // Session: 68% left, 1h of 5h to go (+48). Week: 41% left, 3 of 7 days to go (−2).
+            window.UpdateUsage(UsageProvider.Claude, new RateLimitState(
+                new RateLimitWindowState(68, 300, now + 3600),
+                new RateLimitWindowState(41, 10080, now + 3 * 24 * 3600), null));
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            var badge = window.GetVisualDescendants().OfType<Border>()
+                .Single(border => ToolTip.GetTip(border) is string tip && tip.StartsWith("Average gap from an even pace"));
+            var texts = badge.GetVisualDescendants().OfType<TextBlock>().ToList();
+            Assert.Equal("+23", texts[0].Text);
+            Assert.False(texts[1].IsVisible);
+            Assert.StartsWith("Average gap from an even pace of 2 Claude limits: +23 points", (string)ToolTip.GetTip(badge)!);
+
+            window.ApplySettings(settings with { BadgeAverage = BadgeAverageOptions.TimeToReset }, UiText.For(UiLanguage.English));
+            Assert.Equal("41", texts[0].Text);
+            Assert.True(texts[1].IsVisible);
+            Assert.StartsWith("Average remaining of 2 Claude limits, weighted by time to reset: 41%", (string)ToolTip.GetTip(badge)!);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }, CancellationToken.None);
+
+    [Fact]
+    public Task BadgeMenuSwitchesTheAverageMethod() => Session.Dispatch(() =>
+    {
+        var settings = new CompanionSettings { HeaderBadge = HeaderBadgeOptions.ClaudeAverage };
+        var window = new UsageOverlayWindow(settings);
+        var requested = new List<string>();
+        window.BadgeAverageRequested += requested.Add;
+        try
+        {
+            var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            window.UpdateUsage(UsageProvider.Claude, new RateLimitState(
+                new RateLimitWindowState(68, 300, now + 3600),
+                new RateLimitWindowState(41, 10080, now + 3 * 24 * 3600), null));
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            var badge = window.GetVisualDescendants().OfType<Border>()
+                .Single(border => ToolTip.GetTip(border) is string tip && tip.StartsWith("Average remaining"));
+            string Value() => badge.GetVisualDescendants().OfType<TextBlock>().First().Text!;
+            Assert.Equal("55", Value());
+
+            List<MenuItem> Methods() => window.CreateBadgeMenu().Items.OfType<MenuItem>()
+                .Single(item => (string)item.Header! == "Badge average").Items.OfType<MenuItem>().ToList();
+            Assert.Equal(["Plain average", "Weighted by time to reset", "Weighted by window length", "Gap from even pace"],
+                Methods().Select(item => (string)item.Header!));
+            Assert.True(Methods()[0].IsChecked);
+            // Each method explains itself in its tooltip.
+            Assert.Equal(UiText.For(UiLanguage.English).BadgeAverageChoices.Select(choice => choice.Description),
+                Methods().Select(item => (string)ToolTip.GetTip(item)!));
+            Assert.StartsWith("Remaining percent minus the share of time left", (string)ToolTip.GetTip(Methods()[3])!);
+
+            Methods()[3].RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(MenuItem.ClickEvent));
+            Assert.Equal("+23", Value());
+            Assert.Equal([BadgeAverageOptions.Pace], requested);
+            Assert.True(Methods()[3].IsChecked);
+            Assert.False(Methods()[0].IsChecked);
+
+            // Picking the current method again changes nothing.
+            Methods()[3].RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(MenuItem.ClickEvent));
+            Assert.Single(requested);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }, CancellationToken.None);
+
+    [Fact]
+    public Task ClickingTheBadgeMenuSwitchesAndReportsTheMode() => Session.Dispatch(() =>
+    {
+        var settings = new CompanionSettings();
+        var window = new UsageOverlayWindow(settings);
+        var requested = new List<(string Mode, bool Confirm)>();
+        window.HeaderBadgeRequested += (mode, confirm) => requested.Add((mode, confirm));
+        try
+        {
+            window.UpdateUsage(UsageProvider.Claude, new RateLimitState(
+                new RateLimitWindowState(68, 300, null), new RateLimitWindowState(41, 10080, null), null));
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            var items = window.CreateBadgeMenu().Items.OfType<MenuItem>().ToList();
+            // Every badge choice, then the average method submenu.
+            Assert.Equal(UiText.For(UiLanguage.English).HeaderBadgeChoices.Count + 1, items.Count);
+            Assert.Equal("Badge average", items[^1].Header);
+            Assert.True(items.Single(item => (string)item.Header! == "Lowest remaining limit").IsChecked);
+
+            items.Single(item => (string)item.Header! == "Claude: current session")
+                .RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(MenuItem.ClickEvent));
+            Assert.Equal([(HeaderBadgeOptions.ClaudeSession, true)], requested);
+            var badge = window.GetVisualDescendants().OfType<Border>()
+                .Single(border => ToolTip.GetTip(border) is string tip && tip.StartsWith("Remaining: Claude"));
+            Assert.Equal("68", badge.GetVisualDescendants().OfType<TextBlock>().First().Text);
+            Assert.True(window.CreateBadgeMenu().Items.OfType<MenuItem>()
+                .Single(item => (string)item.Header! == "Claude: current session").IsChecked);
+
+            // Hiding asks first: declining keeps the badge, confirming hides it.
+            var confirmations = 0;
+            var answer = new UsageOverlayWindow.HideBadgeAnswer(false, false);
+            window.ConfirmHideBadge = () => { confirmations++; return Task.FromResult(answer); };
+            void Pick(string label)
+            {
+                window.CreateBadgeMenu().Items.OfType<MenuItem>().Single(item => (string)item.Header! == label)
+                    .RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(MenuItem.ClickEvent));
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            }
+            Pick("Hidden");
+            Assert.Equal(1, confirmations);
+            Assert.True(badge.IsVisible);
+            Assert.Equal([(HeaderBadgeOptions.ClaudeSession, true)], requested);
+
+            answer = new UsageOverlayWindow.HideBadgeAnswer(true, false);
+            Pick("Hidden");
+            Assert.Equal(2, confirmations);
+            Assert.False(badge.IsVisible);
+            Assert.Equal((HeaderBadgeOptions.Hidden, true), requested[^1]);
+
+            // "Do not show again" turns the prompt off and reports it.
+            Pick("Claude: weekly");
+            answer = new UsageOverlayWindow.HideBadgeAnswer(true, true);
+            Pick("Hidden");
+            Assert.Equal(3, confirmations);
+            Assert.Equal((HeaderBadgeOptions.Hidden, false), requested[^1]);
+
+            Pick("Claude: weekly");
+            Pick("Hidden");
+            Assert.Equal(3, confirmations);
+            Assert.Equal((HeaderBadgeOptions.Hidden, false), requested[^1]);
+
+            // Settings with the prompt turned back on (for example after a reset) ask again.
+            window.ApplySettings(settings with { HeaderBadge = HeaderBadgeOptions.Lowest }, UiText.For(UiLanguage.English));
+            Pick("Hidden");
+            Assert.Equal(4, confirmations);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }, CancellationToken.None);
+
+    [Theory]
+    [InlineData(true, true, 1.0)]
+    [InlineData(true, false, 0.75)]
+    [InlineData(false, true, 1.5)]
+    [InlineData(false, false, 1.0)]
+    public Task RingsRespectLimitsScaleAndProviderVisibility(bool current, bool weekly, double scale) => Session.Dispatch(() =>
+    {
+        var settings = new CompanionSettings
+        {
+            OverlayDesign = OverlayDesignOptions.Rings, EnableCodexUsage = false,
+            ShowClaudeSession = current, ShowClaudeWeekly = weekly, FontScale = scale
+        };
+        var window = new UsageOverlayWindow(settings);
+        try
+        {
+            var text = UiText.For(UiLanguage.English);
+            var state = new RateLimitState(
+                new RateLimitWindowState(68, 300, DateTimeOffset.UtcNow.AddHours(2).ToUnixTimeSeconds()),
+                new RateLimitWindowState(23, 10080, DateTimeOffset.UtcNow.AddDays(3).ToUnixTimeSeconds()), null);
+            window.UpdateUsage(UsageProvider.Claude, state);
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            TextBlock[] VisibleText() => window.GetVisualDescendants().OfType<TextBlock>()
+                .Where(control => control.IsEffectivelyVisible).ToArray();
+            Assert.Equal(current, VisibleText().Any(control => control.Text == "68%"));
+            Assert.Equal(weekly, VisibleText().Any(control => control.Text == "23%"));
+            Assert.DoesNotContain(VisibleText(), control => control.Text == "Codex");
+            var dials = window.GetVisualDescendants().OfType<Control>()
+                .Where(control => control.GetType().Name == "RingDrawing" && control.IsEffectivelyVisible).ToArray();
+            Assert.Equal(current || weekly ? 1 : 0, dials.Length);
+            foreach (var dial in dials)
+                Assert.InRange(dial.Bounds.Width, Math.Floor(140 * OverlayLayoutOptions.NormalizeFontScale(scale)), Math.Ceiling(140 * OverlayLayoutOptions.NormalizeFontScale(scale)));
+            foreach (var percent in VisibleText().Where(control => control.Text is "68%" or "23%"))
+            {
+                Assert.Equal(20 * OverlayLayoutOptions.NormalizeFontScale(scale), percent.FontSize);
+                Assert.Contains("Resets in", ToolTip.GetTip(percent) as string);
+            }
+
+            // Switch theme and design with data already present, then return to Rings.
+            window.RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Light;
+            window.ApplySettings(settings with { OverlayDesign = OverlayDesignOptions.Previous }, text);
+            Assert.DoesNotContain(window.GetVisualDescendants().OfType<Control>(),
+                control => control.GetType().Name == "RingDrawing" && control.IsEffectivelyVisible);
+            window.ApplySettings(settings, text);
+            window.UpdateUsage(UsageProvider.Claude, null);
+            Assert.Equal((current ? 1 : 0) + (weekly ? 1 : 0), VisibleText().Count(control => control.Text == "—"));
+            window.SetStatus(null, "Claude refresh failed", UsageProvider.Claude);
+            Assert.Contains(VisibleText(), control => control.Text == "Claude refresh failed");
+        }
+        finally
+        {
+            window.Close();
+        }
+    }, CancellationToken.None);
+
+    [Theory]
+    [InlineData(UiLanguage.English, "Rings")]
+    [InlineData(UiLanguage.TraditionalChinese, "圓環")]
+    [InlineData(UiLanguage.SimplifiedChinese, "圆环")]
+    public void RingsDesignLabelIsLocalized(UiLanguage language, string expected)
+    {
+        Assert.Equal(expected, UiText.For(language).RingsOverlayDesign);
+    }
 
     [Fact]
     public Task AboutLinksToTheProjectAndTheOriginalProject() => Session.Dispatch(() =>

@@ -116,11 +116,133 @@ public sealed class UsagePresentationTests
         Assert.Null(UsagePresentation.SelectBadge(HeaderBadgeOptions.Lowest, []));
     }
 
+    [Theory]
+    [InlineData(HeaderBadgeOptions.ClaudeSession, 68, UsageCardKind.ClaudeSession)]
+    [InlineData(HeaderBadgeOptions.ClaudeWeekly, 41, UsageCardKind.ClaudeWeekly)]
+    [InlineData(HeaderBadgeOptions.CodexFiveHour, 23, UsageCardKind.CodexFiveHour)]
+    [InlineData(HeaderBadgeOptions.CodexWeekly, 82, UsageCardKind.CodexWeekly)]
+    public void BadgeShowsTheNamedLimit(string mode, int expected, UsageCardKind kind)
+    {
+        var badge = UsagePresentation.SelectBadge(mode, Entries)!;
+        Assert.Equal(expected, badge.RemainingPercent);
+        Assert.Equal(kind, badge.Source!.Kind);
+        Assert.Equal(BadgeBasis.Limit, badge.Basis);
+    }
+
+    [Fact]
+    public void BadgeShowsANamedLimitEvenWhenItsRowIsHidden()
+    {
+        BadgeEntry[] entries = [Entries[0], Entries[1] with { Shown = false }];
+
+        Assert.Equal(41, UsagePresentation.SelectBadge(HeaderBadgeOptions.ClaudeWeekly, entries)!.RemainingPercent);
+        Assert.Equal(68, UsagePresentation.SelectBadge(HeaderBadgeOptions.Claude, entries)!.RemainingPercent);
+        Assert.Null(UsagePresentation.SelectBadge(HeaderBadgeOptions.CodexWeekly, entries));
+    }
+
+    [Theory]
+    [InlineData(HeaderBadgeOptions.ClaudeAverage, "Claude", 55)]
+    [InlineData(HeaderBadgeOptions.CodexAverage, "Codex", 53)]
+    public void BadgeAveragesTheShownLimitsOfOneProvider(string mode, string provider, int expected)
+    {
+        var badge = UsagePresentation.SelectBadge(mode, Entries)!;
+        Assert.Equal(expected, badge.RemainingPercent);
+        Assert.Equal(BadgeBasis.Average, badge.Basis);
+        Assert.Equal(provider, badge.Provider);
+        Assert.Equal(2, badge.Count);
+        Assert.Null(badge.Source);
+
+        var single = UsagePresentation.SelectBadge(HeaderBadgeOptions.ClaudeAverage, [Entries[0], Entries[1] with { Shown = false }])!;
+        Assert.Equal(68, single.RemainingPercent);
+        Assert.Equal(BadgeBasis.Limit, single.Basis);
+    }
+
+    // Claude's session resets in 1h of 5h; its week resets in 3 days of 7.
+    private static readonly BadgeEntry[] TimedEntries =
+    [
+        new("Claude", UsageCardKind.ClaudeSession, "Current session", 68, true, 300, 60),
+        new("Claude", UsageCardKind.ClaudeWeekly, "Current week (All)", 41, true, 10080, 4320)
+    ];
+
+    [Theory]
+    // (68 + 41) / 2 = 54.5
+    [InlineData(BadgeAverageOptions.Plain, 55)]
+    // (68 × 60 + 41 × 4320) / 4380 ≈ 41.37
+    [InlineData(BadgeAverageOptions.TimeToReset, 41)]
+    // (68 × 300 + 41 × 10080) / 10380 ≈ 41.78
+    [InlineData(BadgeAverageOptions.WindowLength, 42)]
+    // ((68 − 20) + (41 − 42.86)) / 2 ≈ 23.07
+    [InlineData(BadgeAverageOptions.Pace, 23)]
+    [InlineData("unknown", 55)]
+    public void BadgeAverageUsesTheChosenMethod(string method, int expected)
+    {
+        foreach (var mode in new[] { HeaderBadgeOptions.Average, HeaderBadgeOptions.ClaudeAverage })
+        {
+            var badge = UsagePresentation.SelectBadge(mode, TimedEntries, method)!;
+            Assert.Equal(expected, badge.RemainingPercent);
+            Assert.Equal(BadgeBasis.Average, badge.Basis);
+            Assert.Equal(BadgeAverageOptions.Normalize(method), badge.Method);
+            Assert.Equal(method == BadgeAverageOptions.Pace, badge.IsPaceGap);
+        }
+    }
+
+    [Fact]
+    public void BadgeAverageMethodLeavesOtherModesAlone()
+    {
+        foreach (var method in BadgeAverageOptions.Values)
+        {
+            Assert.Equal(41, UsagePresentation.SelectBadge(HeaderBadgeOptions.Lowest, TimedEntries, method)!.RemainingPercent);
+            Assert.Equal(68, UsagePresentation.SelectBadge(HeaderBadgeOptions.ClaudeSession, TimedEntries, method)!.RemainingPercent);
+        }
+    }
+
+    [Fact]
+    public void PaceGapCoversASingleLimitAndSkipsLimitsWithoutAResetTime()
+    {
+        var single = UsagePresentation.SelectBadge(HeaderBadgeOptions.Average, [TimedEntries[0]], BadgeAverageOptions.Pace)!;
+        Assert.Equal(48, single.RemainingPercent);
+        Assert.True(single.IsPaceGap);
+        Assert.Equal(1, single.Count);
+
+        BadgeEntry[] partly = [TimedEntries[0], TimedEntries[1] with { MinutesUntilReset = null }];
+        Assert.Equal(48, UsagePresentation.SelectBadge(HeaderBadgeOptions.Average, partly, BadgeAverageOptions.Pace)!.RemainingPercent);
+
+        // With no reset times at all, the pace gap falls back to the plain average.
+        var untimed = UsagePresentation.SelectBadge(HeaderBadgeOptions.Average, Entries, BadgeAverageOptions.Pace)!;
+        Assert.Equal(54, untimed.RemainingPercent);
+        Assert.False(untimed.IsPaceGap);
+    }
+
+    [Fact]
+    public void WeightedAveragesUseDefaultWindowsWhenTimingIsUnknown()
+    {
+        BadgeEntry[] untimed = [TimedEntries[0] with { WindowMinutes = null, MinutesUntilReset = null },
+            TimedEntries[1] with { WindowMinutes = null, MinutesUntilReset = null }];
+        // Unknown reset counts as the whole default window: 5h and 7 days.
+        Assert.Equal(42, UsagePresentation.SelectBadge(HeaderBadgeOptions.Average, untimed, BadgeAverageOptions.TimeToReset)!.RemainingPercent);
+        Assert.Equal(42, UsagePresentation.SelectBadge(HeaderBadgeOptions.Average, untimed, BadgeAverageOptions.WindowLength)!.RemainingPercent);
+
+        // Both resetting right now leaves no weight, so they count the same.
+        BadgeEntry[] resetting = [TimedEntries[0] with { MinutesUntilReset = 0 }, TimedEntries[1] with { MinutesUntilReset = 0 }];
+        Assert.Equal(55, UsagePresentation.SelectBadge(HeaderBadgeOptions.Average, resetting, BadgeAverageOptions.TimeToReset)!.RemainingPercent);
+    }
+
+    [Theory]
+    [InlineData(23, UsageSignal.Green)]
+    [InlineData(0, UsageSignal.Green)]
+    [InlineData(-9, UsageSignal.Yellow)]
+    [InlineData(-10, UsageSignal.Orange)]
+    [InlineData(-24, UsageSignal.Orange)]
+    [InlineData(-25, UsageSignal.Red)]
+    public void PaceSignalWarmsAsUsageFallsBehind(int gap, UsageSignal expected)
+    {
+        Assert.Equal(expected, UsagePresentation.GetPaceSignal(gap));
+    }
+
     private static readonly BadgeEntry[] Entries =
     [
-        new("Claude", "Current session", 68),
-        new("Claude", "Current week (All)", 41),
-        new("Codex", "5-hour limit", 23),
-        new("Codex", "Weekly limit", 82)
+        new("Claude", UsageCardKind.ClaudeSession, "Current session", 68),
+        new("Claude", UsageCardKind.ClaudeWeekly, "Current week (All)", 41),
+        new("Codex", UsageCardKind.CodexFiveHour, "5-hour limit", 23),
+        new("Codex", UsageCardKind.CodexWeekly, "Weekly limit", 82)
     ];
 }

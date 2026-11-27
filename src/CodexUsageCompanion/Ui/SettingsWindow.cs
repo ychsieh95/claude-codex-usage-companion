@@ -67,6 +67,8 @@ public sealed class SettingsWindow : Window
     private bool _resetPromptOpen;
     private readonly CheckBox _resetTimeOnNameRow;
     private readonly ComboBox _headerBadge;
+    private readonly ComboBox _badgeAverage;
+    private readonly TextBlock _badgeAverageDescription;
     private readonly Dictionary<string, Control> _pages = [];
     private readonly ListBox _sidebar = new()
     {
@@ -252,7 +254,8 @@ public sealed class SettingsWindow : Window
         var designs = new[]
         {
             new OptionChoice(OverlayDesignOptions.Latest, text.LatestOverlayDesign),
-            new OptionChoice(OverlayDesignOptions.Previous, text.PreviousOverlayDesign)
+            new OptionChoice(OverlayDesignOptions.Previous, text.PreviousOverlayDesign),
+            new OptionChoice(OverlayDesignOptions.Rings, text.RingsOverlayDesign)
         };
         var selectedDesign = OverlayDesignOptions.Normalize(settings.OverlayDesign);
         _overlayDesign = new ComboBox
@@ -419,20 +422,34 @@ public sealed class SettingsWindow : Window
             FontSize = 12,
             TextWrapping = TextWrapping.Wrap
         };
-        var badges = new[]
-        {
-            new OptionChoice(HeaderBadgeOptions.Lowest, text.LowestBadgeChoice),
-            new OptionChoice(HeaderBadgeOptions.Average, text.AverageBadgeChoice),
-            new OptionChoice(HeaderBadgeOptions.Claude, text.ClaudeBadgeChoice),
-            new OptionChoice(HeaderBadgeOptions.Codex, text.CodexBadgeChoice),
-            new OptionChoice(HeaderBadgeOptions.Hidden, text.HiddenBadgeChoice)
-        };
+        var badges = text.HeaderBadgeChoices
+            .Select(choice => new OptionChoice(choice.Value, choice.Label))
+            .ToArray();
         var selectedBadge = HeaderBadgeOptions.Normalize(settings.HeaderBadge);
         _headerBadge = new ComboBox
         {
             ItemsSource = badges,
             SelectedItem = badges.First(choice => choice.Value == selectedBadge),
             HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+        var averages = text.BadgeAverageChoices
+            .Select(choice => new OptionChoice(choice.Value, choice.Label))
+            .ToArray();
+        var averageDescriptions = text.BadgeAverageChoices
+            .ToDictionary(choice => choice.Value, choice => choice.Description);
+        var selectedAverage = BadgeAverageOptions.Normalize(settings.BadgeAverage);
+        _badgeAverage = new ComboBox
+        {
+            ItemsSource = averages,
+            SelectedItem = averages.First(choice => choice.Value == selectedAverage),
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+        // The description follows the selected method.
+        _badgeAverageDescription = Hint(averageDescriptions[selectedAverage]);
+        _badgeAverage.SelectionChanged += (_, _) =>
+        {
+            if (_badgeAverage.SelectedItem is OptionChoice choice)
+                _badgeAverageDescription.Text = averageDescriptions[choice.Value];
         };
         _resetTimeOnNameRow = new CheckBox
         {
@@ -538,6 +555,7 @@ public sealed class SettingsWindow : Window
             Row(text.OverlayDesignOption, _overlayDesign),
             Row(text.LimitRowsLabel, _resetTimeOnNameRow),
             Row(text.HeaderBadgeOption, _headerBadge),
+            Row(text.BadgeAverageOption, _badgeAverage, Hint(text.BadgeAverageHint), _badgeAverageDescription),
             Row(text.FontSizeOption, fontSizeControls, fontSizePreviewBorder),
             Row(text.BackgroundColorOption, _backgroundColor, Hint(text.BackgroundColorFormatHint), _backgroundColorStatus),
             Row(text.SpacingLabel,
@@ -787,6 +805,7 @@ public sealed class SettingsWindow : Window
             _overlayDesign.SelectedItem = _overlayDesign.Items.OfType<OptionChoice>().First(choice => choice.Value == defaults.OverlayDesign);
             _resetTimeOnNameRow.IsChecked = defaults.ResetTimeOnNameRow;
             _headerBadge.SelectedItem = _headerBadge.Items.OfType<OptionChoice>().First(choice => choice.Value == defaults.HeaderBadge);
+            _badgeAverage.SelectedItem = _badgeAverage.Items.OfType<OptionChoice>().First(choice => choice.Value == defaults.BadgeAverage);
             _fontSizeSlider.Value = defaults.FontScale * 100;
             _backgroundColor.Text = defaults.BackgroundColor;
             _labelPercentageSpacing.Value = defaults.LabelPercentageSpacing;
@@ -995,6 +1014,7 @@ public sealed class SettingsWindow : Window
             OverlayDesign = (_overlayDesign.SelectedItem as OptionChoice)?.Value ?? OverlayDesignOptions.Latest,
             ResetTimeOnNameRow = _resetTimeOnNameRow.IsChecked == true,
             HeaderBadge = (_headerBadge.SelectedItem as OptionChoice)?.Value ?? HeaderBadgeOptions.Lowest,
+            BadgeAverage = (_badgeAverage.SelectedItem as OptionChoice)?.Value ?? BadgeAverageOptions.Plain,
             FontScale = OverlayLayoutOptions.NormalizeFontScale(_fontSizeSlider.Value / 100),
             BackgroundColor = OverlayAppearanceOptions.NormalizeBackgroundColor(_backgroundColor.Text),
             PercentageTimeSpacing = (int)(_percentageTimeSpacing.Value ?? OverlayAppearanceOptions.DefaultSpacing),
@@ -1048,8 +1068,12 @@ public sealed class SettingsWindow : Window
         _percentageTimeSpacing.IsEnabled = previous;
         _previousDesignNote.IsVisible = !previous;
         // The one-row layout belongs to the Latest design's limit rows.
-        _resetTimeOnNameRow.IsEnabled = !previous;
-        _headerBadge.IsEnabled = !previous;
+        _resetTimeOnNameRow.IsEnabled =
+            (_overlayDesign.SelectedItem as OptionChoice)?.Value == OverlayDesignOptions.Latest;
+        // Only the Latest design shows the header badge.
+        _headerBadge.IsEnabled =
+            (_overlayDesign.SelectedItem as OptionChoice)?.Value == OverlayDesignOptions.Latest;
+        _badgeAverage.IsEnabled = _headerBadge.IsEnabled;
     }
 
     private void UpdateMinimizeOnStartControls()
@@ -1252,6 +1276,23 @@ public sealed class SettingsWindow : Window
     }
 
     /// <summary>A combo box choice: a stored setting value and its display name.</summary>
+    /// <summary>Shows a header badge mode chosen from the panel, so saving keeps it.</summary>
+    public void SelectHeaderBadge(string value, bool confirmHideBadge)
+    {
+        _settings = _settings with { ConfirmHideBadge = confirmHideBadge };
+        var normalized = HeaderBadgeOptions.Normalize(value);
+        _headerBadge.SelectedItem = _headerBadge.Items.OfType<OptionChoice>()
+            .FirstOrDefault(choice => choice.Value == normalized) ?? _headerBadge.SelectedItem;
+    }
+
+    /// <summary>Shows a badge average method chosen from the panel, so saving keeps it.</summary>
+    public void SelectBadgeAverage(string value)
+    {
+        var normalized = BadgeAverageOptions.Normalize(value);
+        _badgeAverage.SelectedItem = _badgeAverage.Items.OfType<OptionChoice>()
+            .FirstOrDefault(choice => choice.Value == normalized) ?? _badgeAverage.SelectedItem;
+    }
+
     private sealed record OptionChoice(string Value, string DisplayName)
     {
         public override string ToString() => DisplayName;

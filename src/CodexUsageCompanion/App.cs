@@ -76,6 +76,8 @@ public sealed class App : Application
             _window.AlwaysOnTopRequested += HandleAlwaysOnTopRequested;
             _window.CardHeightChanged += HandleCardHeightChanged;
             _window.CustomPositionChanged += HandleCustomPositionChanged;
+            _window.HeaderBadgeRequested += HandleHeaderBadgeRequested;
+            _window.BadgeAverageRequested += HandleBadgeAverageRequested;
             _window.Closing += async (_, eventArgs) =>
             {
                 if (_shutdownRequested)
@@ -566,6 +568,44 @@ public sealed class App : Application
         {
             CompanionLog.Shared.Write("window-position", exception);
             _window?.SetStatus(null, $"Unable to save window position: {exception.Message}");
+        }
+    }
+
+    private void HandleHeaderBadgeRequested(string mode, bool confirmHideBadge)
+    {
+        _settingsWindow?.SelectHeaderBadge(mode, confirmHideBadge);
+        try
+        {
+            _settings = CompanionSettingsStore.Save(_settings with
+            {
+                HeaderBadge = mode,
+                ConfirmHideBadge = confirmHideBadge
+            });
+        }
+        catch (Exception exception) when (
+            exception is IOException or
+            UnauthorizedAccessException or
+            ArgumentException)
+        {
+            CompanionLog.Shared.Write("header-badge", exception);
+            _window?.SetStatus(null, $"Unable to save header badge: {exception.Message}");
+        }
+    }
+
+    private void HandleBadgeAverageRequested(string method)
+    {
+        _settingsWindow?.SelectBadgeAverage(method);
+        try
+        {
+            _settings = CompanionSettingsStore.Save(_settings with { BadgeAverage = method });
+        }
+        catch (Exception exception) when (
+            exception is IOException or
+            UnauthorizedAccessException or
+            ArgumentException)
+        {
+            CompanionLog.Shared.Write("badge-average", exception);
+            _window?.SetStatus(null, $"Unable to save badge average: {exception.Message}");
         }
     }
 

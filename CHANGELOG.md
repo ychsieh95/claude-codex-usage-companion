@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+
+- A **Rings** design for the desktop panel under **Settings → Appearance → Design**. Each provider shows a circular progress ring that fills with the remaining share; with both limits shown, the outer ring is the current or 5-hour limit and the inner, lighter ring is the weekly limit. Both percentages appear in the center, with each limit's name and reset countdown to the right. The even-pace pointer is a dot on the ring.
+- More **Header badge** choices for the desktop panel: one provider's single limit (**Claude: current session**, **Claude: weekly**, **Codex: 5-hour**, **Codex: weekly**) or one provider's average (**Claude: average**, **Codex: average**). A single limit shows even when its row is hidden.
+- Click the header badge on the panel to open a menu and switch what it shows. The choice is saved, as if made in Settings. Choosing **Hidden** there asks first, since a hidden badge can only be turned back on in **Settings → Appearance → Header badge**. Tick **Do not show again** to skip that question; **Reset to defaults** in Settings brings it back.
+- A **Badge average** option under **Settings → Appearance** that sets how the badge's average choices take time into account: **Plain average** (default), **Weighted by time to reset**, **Weighted by window length**, or **Gap from even pace**. The gap shows signed points, such as **+23**, and is green at or above an even pace. Time-aware averages update every minute. The same choice is in a **Badge average** submenu of the badge's click menu. Each method has a short description under the Settings option and as a tooltip in the menu.
+
 ## [0.2.1] - 2026-11-27
 
 ### Added

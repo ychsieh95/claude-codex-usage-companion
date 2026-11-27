@@ -267,6 +267,7 @@ public sealed record UiText(
     };
 
     public string OverlayDesignOption => UpdateText("Design", "設計", "设计");
+    public string RingsOverlayDesign => UpdateText("Rings", "圓環", "圆环");
     public string LatestOverlayDesign => UpdateText("Latest", "最新", "最新");
     public string PreviousOverlayDesign => UpdateText("Previous (v0.1.5)", "舊版（v0.1.5）", "旧版（v0.1.5）");
     public string PreviousDesignOnlyNote => UpdateText(
@@ -281,12 +282,97 @@ public sealed record UiText(
     public string LowestBadgeChoice => UpdateText("Lowest remaining limit", "剩餘最少的限制", "剩余最少的限制");
     public string AverageBadgeChoice => UpdateText("Average of shown limits", "顯示中限制的平均值", "显示中限制的平均值");
     public string ClaudeBadgeChoice => UpdateText("Claude (lowest remaining)", "Claude（剩餘最少）", "Claude（剩余最少）");
+    public string ClaudeSessionBadgeChoice => UpdateText("Claude: current session", "Claude：目前工作階段", "Claude：当前会话");
+    public string ClaudeWeeklyBadgeChoice => UpdateText("Claude: weekly", "Claude：每週", "Claude：每周");
+    public string ClaudeAverageBadgeChoice => UpdateText("Claude: average", "Claude：平均值", "Claude：平均值");
     public string CodexBadgeChoice => UpdateText("Codex (lowest remaining)", "Codex（剩餘最少）", "Codex（剩余最少）");
+    public string CodexFiveHourBadgeChoice => UpdateText("Codex: 5-hour", "Codex：5 小時", "Codex：5 小时");
+    public string CodexWeeklyBadgeChoice => UpdateText("Codex: weekly", "Codex：每週", "Codex：每周");
+    public string CodexAverageBadgeChoice => UpdateText("Codex: average", "Codex：平均值", "Codex：平均值");
+    /// <summary>The header badge modes with their labels, in menu order.</summary>
+    public IReadOnlyList<(string Value, string Label)> HeaderBadgeChoices =>
+    [
+        (Configuration.HeaderBadgeOptions.Lowest, LowestBadgeChoice),
+        (Configuration.HeaderBadgeOptions.Average, AverageBadgeChoice),
+        (Configuration.HeaderBadgeOptions.Claude, ClaudeBadgeChoice),
+        (Configuration.HeaderBadgeOptions.ClaudeSession, ClaudeSessionBadgeChoice),
+        (Configuration.HeaderBadgeOptions.ClaudeWeekly, ClaudeWeeklyBadgeChoice),
+        (Configuration.HeaderBadgeOptions.ClaudeAverage, ClaudeAverageBadgeChoice),
+        (Configuration.HeaderBadgeOptions.Codex, CodexBadgeChoice),
+        (Configuration.HeaderBadgeOptions.CodexFiveHour, CodexFiveHourBadgeChoice),
+        (Configuration.HeaderBadgeOptions.CodexWeekly, CodexWeeklyBadgeChoice),
+        (Configuration.HeaderBadgeOptions.CodexAverage, CodexAverageBadgeChoice),
+        (Configuration.HeaderBadgeOptions.Hidden, HiddenBadgeChoice)
+    ];
     public string HiddenBadgeChoice => UpdateText("Hidden", "隱藏", "隐藏");
-    public string FormatAverageRemaining(int count, int remainingPercent) => UpdateText(
-        $"Average remaining of {count} limits: {remainingPercent}%",
-        $"{count} 項限制的平均剩餘：{remainingPercent}%",
-        $"{count} 项限制的平均剩余：{remainingPercent}%");
+    /// <summary>The badge tooltip for an average, worded for its method and scope.</summary>
+    public string FormatAverageBadge(string? provider, int count, int value, string method)
+    {
+        var scope = provider is null
+            ? UpdateText($"{count} limits", $"{count} 項限制", $"{count} 项限制")
+            : UpdateText($"{count} {provider} limits", $"{provider} {count} 項限制", $"{provider} {count} 项限制");
+        if (method == Configuration.BadgeAverageOptions.Pace)
+        {
+            var gap = value > 0 ? $"+{value}" : value.ToString();
+            return count == 1
+                ? UpdateText(
+                    $"Gap from an even pace: {gap} points (above 0 means slower than an even pace)",
+                    $"與平均速度的差距：{gap} 個百分點（大於 0 表示用得比平均速度慢）",
+                    $"与平均速度的差距：{gap} 个百分点（大于 0 表示用得比平均速度慢）")
+                : UpdateText(
+                    $"Average gap from an even pace of {scope}: {gap} points (above 0 means slower than an even pace)",
+                    $"{scope}與平均速度的平均差距：{gap} 個百分點（大於 0 表示用得比平均速度慢）",
+                    $"{scope}与平均速度的平均差距：{gap} 个百分点（大于 0 表示用得比平均速度慢）");
+        }
+
+        var weighting = method switch
+        {
+            Configuration.BadgeAverageOptions.TimeToReset => UpdateText(
+                ", weighted by time to reset", "（依距離重置時間加權）", "（按距离重置时间加权）"),
+            Configuration.BadgeAverageOptions.WindowLength => UpdateText(
+                ", weighted by window length", "（依時間窗長度加權）", "（按时间窗长度加权）"),
+            _ => string.Empty
+        };
+        return UpdateText(
+            $"Average remaining of {scope}{weighting}: {value}%",
+            $"{scope}的平均剩餘{weighting}：{value}%",
+            $"{scope}的平均剩余{weighting}：{value}%");
+    }
+
+    public string BadgeAverageOption => UpdateText("Badge average", "徽章平均方式", "徽章平均方式");
+    public string BadgeAverageHint => UpdateText(
+        "How the badge's average choices combine limits.",
+        "徽章的平均值選項如何合併各項限制。",
+        "徽章的平均值选项如何合并各项限制。");
+
+    /// <summary>The badge average methods with their labels and descriptions, in menu order.</summary>
+    public IReadOnlyList<(string Value, string Label, string Description)> BadgeAverageChoices =>
+    [
+        (Configuration.BadgeAverageOptions.Plain,
+            UpdateText("Plain average", "簡單平均", "简单平均"),
+            UpdateText(
+                "Every limit counts the same, whenever it resets.",
+                "每項限制的權重相同，不論何時重置。",
+                "每项限制的权重相同，不论何时重置。")),
+        (Configuration.BadgeAverageOptions.TimeToReset,
+            UpdateText("Weighted by time to reset", "依距離重置時間加權", "按距离重置时间加权"),
+            UpdateText(
+                "A limit that refills soon counts less, so the badge shows what you must last on.",
+                "即將重置的限制權重較低，徽章會反映你需要撐到重置的用量。",
+                "即将重置的限制权重较低，徽章会反映你需要撑到重置的用量。")),
+        (Configuration.BadgeAverageOptions.WindowLength,
+            UpdateText("Weighted by window length", "依時間窗長度加權", "按时间窗长度加权"),
+            UpdateText(
+                "Longer windows count more, so a weekly limit outweighs a 5-hour one.",
+                "時間窗越長權重越高，因此每週限制比 5 小時限制更重要。",
+                "时间窗越长权重越高，因此每周限制比 5 小时限制更重要。")),
+        (Configuration.BadgeAverageOptions.Pace,
+            UpdateText("Gap from even pace", "與平均速度的差距", "与平均速度的差距"),
+            UpdateText(
+                "Remaining percent minus the share of time left, in signed points. Above 0 means you use less than an even pace.",
+                "剩餘百分比減去剩餘時間比例，以帶正負號的百分點表示。大於 0 表示用得比平均速度慢。",
+                "剩余百分比减去剩余时间比例，以带正负号的百分点表示。大于 0 表示用得比平均速度慢。"))
+    ];
     public string LimitRowsLabel => UpdateText("Limit rows", "限制列", "限制行");
     public string ProvidersLabel => UpdateText("Providers", "供應商", "提供方");
     public string SpacingLabel => UpdateText("Spacing", "間距", "间距");
@@ -345,6 +431,22 @@ public sealed record UiText(
             $"平均速度：目前應剩餘約 {expectedRemainingPercent}%。你的使用速度{pace}。",
             $"平均速度：目前应剩余约 {expectedRemainingPercent}%。你的使用速度{pace}。");
     }
+
+    public string HideBadgeTitle => UpdateText("Hide the badge?", "隱藏徽章？", "隐藏徽章？");
+    public string HideBadgeMessage => UpdateText(
+        "The header badge will be hidden, and you can no longer click it to switch. To show it again, open Settings → Appearance → Header badge.",
+        "標題徽章將會隱藏，之後無法再按一下徽章切換。若要再次顯示，請開啟「設定 → 外觀 → 標題徽章」。",
+        "标题徽章将会隐藏，之后无法再单击徽章切换。如需再次显示，请打开“设置 → 外观 → 标题徽章”。");
+    public string DoNotShowAgainOption => UpdateText("Do not show again", "不再顯示", "不再显示");
+    public string HideBadgeAction => UpdateText("Hide", "隱藏", "隐藏");
+
+    public string BadgeQuickChangeHint => UpdateText(
+        "Click to change what this shows", "按一下可變更顯示內容", "单击可更改显示内容");
+
+    public string FormatLimitRemaining(string provider, string limit, int remainingPercent) => UpdateText(
+        $"Remaining: {provider} {limit}, {remainingPercent}%",
+        $"剩餘：{provider} {limit}，{remainingPercent}%",
+        $"剩余：{provider} {limit}，{remainingPercent}%");
 
     public string FormatLowestRemaining(string provider, string limit, int remainingPercent) => UpdateText(
         $"Lowest remaining: {provider} {limit}, {remainingPercent}%",

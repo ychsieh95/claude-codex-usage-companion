@@ -23,12 +23,13 @@ Under **Settings → Appearance**, select a **Design** for the panel:
 
 - **Latest** (default) matches the Plasma widget popup. Each provider has a card with a colored edge. Each limit shows its name, a reset countdown with the local reset time, and a thin bar. A large percentage on the right, in a monospaced font, is as tall as the name, reset time, and bar together. A line separates the credits from the limits. The heading shows the last update time and a badge with the lowest remaining limit. Move the pointer over the badge to see which limit it is.
 - **Previous** restores the v0.1.5 panel with the labelled 36-pixel bars.
+- **Rings** shows each provider as a circular progress ring that fills with the remaining share. If both limits of a provider are shown, the outer ring is the current or 5-hour limit and the inner, lighter ring is the weekly limit. Both percentages appear in the center. Each limit's name and reset countdown sit to the right, next to a colored bar that matches its ring. The panel is narrower than in the latest design, and the heading has no badge. The Claude card always shows its credit status.
 
 Select **OK** or **Apply** to change the design.
 
 In the latest design, **Limit rows** can show each limit's name and reset time on one row. This makes the panel shorter. By default, the reset time is on a second row below the name.
 
-The even-pace pointer appears in both designs. In the latest design, it is a dot on the bar. Move the pointer over the dot to see if you are ahead of an even pace. The two gap settings and the card resize handles apply only to the previous design.
+The even-pace pointer appears in all designs. In the latest design, it is a dot on the bar. In the rings design, it is a dot on the ring. Move the pointer over the dot to see if you are ahead of an even pace. The two gap settings and the card resize handles apply only to the previous design.
 
 ## v0.1.3
 
@@ -43,9 +44,10 @@ The app saves the selected page when Settings closes, including after **Cancel**
 Under **Appearance**, set these values:
 
 - Background color: `#RRGGBB` or `#AARRGGBB`. An empty field uses the theme color.
-- Design: **Latest** or **Previous**. The default is **Latest**.
+- Design: **Latest**, **Previous**, or **Rings**. The default is **Latest**.
 - Limit rows: show the name and reset time of each limit on one row. The default is off. This applies only to the **Latest** design.
-- Header badge: the value in the heading badge of the **Latest** design. Select **Lowest remaining limit** (default), **Average of shown limits**, **Claude (lowest remaining)**, **Codex (lowest remaining)**, or **Hidden**.
+- Header badge: the value in the heading badge of the **Latest** design. Select **Lowest remaining limit** (default), **Average of shown limits**, **Claude (lowest remaining)**, **Claude: current session**, **Claude: weekly**, **Claude: average**, **Codex (lowest remaining)**, **Codex: 5-hour**, **Codex: weekly**, **Codex: average**, or **Hidden**. Click the badge on the panel to switch quickly.
+- Badge average: how the badge's average choices combine limits. **Plain average** (default) counts every limit the same. **Weighted by time to reset** counts a limit that refills soon less. **Weighted by window length** counts weekly limits more than 5-hour ones. **Gap from even pace** shows remaining percent minus the share of the window still to come, as signed points: above 0 means you're using less than an even pace. The badge's click menu also has these choices, under **Badge average**.
 - Gap between the label and percentage: 0–300 pixels. The default is **128**.
 - Gap between the percentage and reset time: 0–64 pixels. The default is **16**.
 
@@ -106,6 +108,7 @@ Before it opens, the window fits all visible cards and the status line. The bott
 | --- | --- | --- | --- |
 | Latest (default) | ![English usage overlay, latest design](assets/screenshots/overlay-en.png) | ![Traditional Chinese usage overlay, latest design](assets/screenshots/overlay-zh-tw.png) | ![Simplified Chinese usage overlay, latest design](assets/screenshots/overlay-zh-cn.png) |
 | Previous (v0.1.5) | ![English usage overlay, previous design](assets/screenshots/overlay-previous-en.png) | ![Traditional Chinese usage overlay, previous design](assets/screenshots/overlay-previous-zh-tw.png) | ![Simplified Chinese usage overlay, previous design](assets/screenshots/overlay-previous-zh-cn.png) |
+| Rings | ![English usage overlay, rings design](assets/screenshots/overlay-rings-en.png) | ![Traditional Chinese usage overlay, rings design](assets/screenshots/overlay-rings-zh-tw.png) | ![Simplified Chinese usage overlay, rings design](assets/screenshots/overlay-rings-zh-cn.png) |
 
 The panel images use sample usage data. To switch designs, use **Settings → Appearance → Design**.
 
@@ -432,6 +435,8 @@ ${XDG_CONFIG_HOME:-$HOME/.config}/claude-codex-usage-companion/settings.json
   "overlayDesign": "latest",
   "resetTimeOnNameRow": false,
   "headerBadge": "lowest",
+  "confirmHideBadge": true,
+  "badgeAverage": "plain",
   "settingsPage": "usage",
   "backgroundColor": "",
   "percentageTimeSpacing": 16,
@@ -462,9 +467,9 @@ The app also accepts the legacy values `auto` and `en`. Letter case does not aff
 
 Theme values: `dark`, `light`, and `system`. `system` is the default and follows the desktop's current light or dark preference.
 
-Design values: `latest` and `previous`. `latest` is the default. `resetTimeOnNameRow` puts each limit's name and reset time on one row in the latest design. The default is `false`.
+Design values: `latest`, `previous`, and `rings`. `latest` is the default. `resetTimeOnNameRow` puts each limit's name and reset time on one row in the latest design. The default is `false`.
 
-Header badge values: `lowest`, `average`, `claude`, `codex`, and `hidden`. `lowest` is the default. `claude` and `codex` show the lowest remaining limit of that provider. `average` shows the average of the shown limits.
+Header badge values: `lowest`, `average`, `claude`, `claude-session`, `claude-weekly`, `claude-average`, `codex`, `codex-five-hour`, `codex-weekly`, `codex-average`, and `hidden`. `lowest` is the default. `claude` and `codex` show the lowest remaining limit of that provider. `average` shows the average of the shown limits, and `claude-average` and `codex-average` the average of that provider's shown limits. `claude-session`, `claude-weekly`, `codex-five-hour`, and `codex-weekly` show that one limit, even when its row is hidden. Badge average values: `plain` (default), `time-to-reset`, `window-length`, and `pace`.
 
 Settings page values: `usage`, `appearance`, `window`, `notifications`, `dateTime`, `logging`, and `updates`. `settingsPage` stores the page that Settings shows when it opens. The app ignores the `settingsSections` value from earlier versions.
 

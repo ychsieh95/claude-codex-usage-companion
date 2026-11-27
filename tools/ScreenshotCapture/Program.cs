@@ -39,7 +39,8 @@ foreach (var (language, filename) in new[]
 foreach (var (design, overlayFilename) in new[]
 {
     (OverlayDesignOptions.Latest, filename),
-    (OverlayDesignOptions.Previous, filename.Replace("overlay-", "overlay-previous-"))
+    (OverlayDesignOptions.Previous, filename.Replace("overlay-", "overlay-previous-")),
+    (OverlayDesignOptions.Rings, filename.Replace("overlay-", "overlay-rings-"))
 })
 {
     var window = new UsageOverlayWindow(new CompanionSettings
@@ -48,9 +49,14 @@ foreach (var (design, overlayFilename) in new[]
         ShowCodexFiveHour = true,
         OverlayDesign = design
     }, UiText.For(language));
-    window.Width = 460;
+    // Rings keeps its own narrower fitted width.
+    if (design != OverlayDesignOptions.Rings)
+        window.Width = 460;
     window.UpdateUsage(UsageProvider.Claude, new RateLimitState(
-        new(72, 300, claudeSessionReset), new(64, 10080, weeklyReset), null));
+        new(72, 300, claudeSessionReset), new(64, 10080, weeklyReset), null)
+    {
+        ExtraUsage = new RateLimitExtraUsageState(true, 3.20m, 20.00m, "USD")
+    });
     window.UpdateUsage(UsageProvider.Codex, new RateLimitState(
         new(91, 300, codexFiveHourReset), new(87, 10080, weeklyReset), null)
     {

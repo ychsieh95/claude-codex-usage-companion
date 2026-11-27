@@ -23,12 +23,13 @@ Claude Codex Usage Companion 是一款在 Linux 上运行的本地开源 Claude 
 
 - **最新**（默认）与 Plasma 小部件的弹出窗口一致。每个提供方各有一张带彩色边缘的卡片。每项限制显示名称、重置倒计时与本机重置时间、以及细进度条。右侧的大号百分比使用等宽字体，与名称、重置时间及进度条合计等高。点数信息上方以分隔线与限制隔开。标题栏显示最后更新时间，以及显示剩余最少限制的徽章。将指针移到徽章上可查看是哪一项限制。
 - **旧版**还原 v0.1.5 面板，使用带标签的 36 像素进度条。
+- **圆环**以圆形进度环显示每个提供方，环的长度代表剩余比例。若同时显示提供方的两项限制，外环是当前或 5 小时限制，颜色较浅的内环是每周限制。两个百分比都显示在中央。每项限制的名称与重置倒计时位于右侧，旁边有与其圆环同色的色条。面板比最新设计窄，标题栏不显示徽章。Claude 卡片始终显示点数状态。
 
 选择**确定**或**应用**以更改设计。
 
 在最新设计中，**限制行**可将每项限制的名称与重置时间显示在同一行，使面板更矮。默认会将重置时间显示在名称下方的第二行。
 
-两种设计都显示平均速度指针。在最新设计中，指针是进度条上的圆点。将鼠标指针移到圆点上可查看使用速度是否低于平均速度。两个间距设置与卡片高度调整控点仅适用于旧版设计。
+所有设计都显示平均速度指针。在最新设计中，指针是进度条上的圆点；在圆环设计中，指针是圆环上的圆点。将鼠标指针移到圆点上可查看使用速度是否低于平均速度。两个间距设置与卡片高度调整控点仅适用于旧版设计。
 
 ## v0.1.3
 
@@ -43,9 +44,10 @@ Claude Codex Usage Companion 是一款在 Linux 上运行的本地开源 Claude 
 在**外观**中设置以下项目：
 
 - 背景颜色：`#RRGGBB` 或 `#AARRGGBB`。留空使用主题颜色。
-- 设计：**最新**或**旧版**，默认 **最新**。
+- 设计：**最新**、**旧版**或**圆环**，默认 **最新**。
 - 限制行：将每项限制的名称与重置时间显示在同一行，默认关闭。仅适用于**最新**设计。
-- 标题徽章：**最新**设计标题栏徽章显示的值。可选**剩余最少的限制**（默认）、**显示中限制的平均值**、**Claude（剩余最少）**、**Codex（剩余最少）**或**隐藏**。
+- 标题徽章：**最新**设计标题栏徽章显示的值。可选**剩余最少的限制**（默认）、**显示中限制的平均值**、**Claude（剩余最少）**、**Claude：当前会话**、**Claude：每周**、**Claude：平均值**、**Codex（剩余最少）**、**Codex：5 小时**、**Codex：每周**、**Codex：平均值**或**隐藏**。在面板上单击徽章即可快速切换。
+- 徽章平均方式：徽章的平均值选项如何合并各项限制。**简单平均**（默认）每项限制权重相同。**按距离重置时间加权**让即将重置的限制权重较低。**按时间窗长度加权**让每周限制比 5 小时限制权重更高。**与平均速度的差距**显示剩余百分比减去时间窗尚未经过的比例，以带正负号的百分点表示：大于 0 表示用得比平均速度慢。徽章的单击菜单也在**徽章平均方式**下提供这些选项。
 - 标签与百分比间距：0–300 像素，默认 **128**。
 - 百分比与重置时间间距：0–64 像素，默认 **16**。
 
@@ -106,6 +108,7 @@ sha256sum --check --ignore-missing SHA256SUMS
 | --- | --- | --- | --- |
 | 最新（默认） | ![英文用量面板（最新设计）](assets/screenshots/overlay-en.png) | ![繁体中文用量面板（最新设计）](assets/screenshots/overlay-zh-tw.png) | ![简体中文用量面板（最新设计）](assets/screenshots/overlay-zh-cn.png) |
 | 旧版（v0.1.5） | ![英文用量面板（旧版设计）](assets/screenshots/overlay-previous-en.png) | ![繁体中文用量面板（旧版设计）](assets/screenshots/overlay-previous-zh-tw.png) | ![简体中文用量面板（旧版设计）](assets/screenshots/overlay-previous-zh-cn.png) |
+| 圆环 | ![英文用量面板（圆环设计）](assets/screenshots/overlay-rings-en.png) | ![繁体中文用量面板（圆环设计）](assets/screenshots/overlay-rings-zh-tw.png) | ![简体中文用量面板（圆环设计）](assets/screenshots/overlay-rings-zh-cn.png) |
 
 用量面板图片使用示例数据。可在**设置 → 外观 → 设计**切换设计。
 
@@ -432,6 +435,8 @@ ${XDG_CONFIG_HOME:-$HOME/.config}/claude-codex-usage-companion/settings.json
   "overlayDesign": "latest",
   "resetTimeOnNameRow": false,
   "headerBadge": "lowest",
+  "confirmHideBadge": true,
+  "badgeAverage": "plain",
   "settingsPage": "usage",
   "backgroundColor": "",
   "percentageTimeSpacing": 16,
@@ -462,9 +467,9 @@ ${XDG_CONFIG_HOME:-$HOME/.config}/claude-codex-usage-companion/settings.json
 
 主题值：`dark`、`light`、`system`。`system` 是默认值，会跟随桌面当前的浅色或深色偏好设置。
 
-设计值：`latest` 和 `previous`。`latest` 是默认值。`resetTimeOnNameRow` 会在最新设计中将每项限制的名称与重置时间显示在同一行，默认为 `false`。
+设计值：`latest`、`previous` 和 `rings`。`latest` 是默认值。`resetTimeOnNameRow` 会在最新设计中将每项限制的名称与重置时间显示在同一行，默认为 `false`。
 
-标题徽章值：`lowest`、`average`、`claude`、`codex`、`hidden`。`lowest` 是默认值。`claude` 和 `codex` 显示该提供方剩余最少的限制。`average` 显示显示中限制的平均值。
+标题徽章值：`lowest`、`average`、`claude`、`claude-session`、`claude-weekly`、`claude-average`、`codex`、`codex-five-hour`、`codex-weekly`、`codex-average`、`hidden`。`lowest` 是默认值。`claude` 和 `codex` 显示该提供方剩余最少的限制。`average` 显示显示中限制的平均值，`claude-average` 和 `codex-average` 显示该提供方显示中限制的平均值。`claude-session`、`claude-weekly`、`codex-five-hour` 和 `codex-weekly` 显示该项限制，即使其行已隐藏。徽章平均方式值：`plain`（默认）、`time-to-reset`、`window-length`、`pace`。
 
 设置页面值：`usage`、`appearance`、`window`、`notifications`、`dateTime`、`logging`、`updates`。`settingsPage` 保存设置窗口打开时显示的页面。程序会忽略旧版的 `settingsSections` 值。
 

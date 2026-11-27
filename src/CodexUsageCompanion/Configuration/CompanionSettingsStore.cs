@@ -181,6 +181,7 @@ public static class CompanionSettingsStore
             Theme = UiThemeOptions.Normalize(settings.Theme),
             OverlayDesign = OverlayDesignOptions.Normalize(settings.OverlayDesign),
             HeaderBadge = HeaderBadgeOptions.Normalize(settings.HeaderBadge),
+            BadgeAverage = BadgeAverageOptions.Normalize(settings.BadgeAverage),
             SettingsPage = SettingsPageOptions.Normalize(settings.SettingsPage),
             FontScale = OverlayLayoutOptions.NormalizeFontScale(settings.FontScale),
             ClaudeSessionCardHeight = OverlayLayoutOptions.NormalizeCardHeight(settings.ClaudeSessionCardHeight, weekly: false),

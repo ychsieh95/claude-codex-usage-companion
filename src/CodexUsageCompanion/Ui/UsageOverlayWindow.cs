@@ -52,9 +52,13 @@ public sealed class UsageOverlayWindow : Window
     private Grid _headerGrid = null!;
     private readonly LatestProviderCard _latestClaude;
     private readonly LatestProviderCard _latestCodex;
+    private readonly RingsProviderCard _ringsClaude;
+    private readonly RingsProviderCard _ringsCodex;
     private string _design;
     private bool _resetOnNameRow;
     private string _headerBadge;
+    private bool _confirmHideBadge;
+    private string _badgeAverage;
     private readonly TextBlock _status;
     private Button _minimizeButton = null!;
     private ToggleButton _pinButton = null!;
@@ -116,7 +120,10 @@ public sealed class UsageOverlayWindow : Window
         _position = WindowPosition.Normalize(settings.Position);
         _design = OverlayDesignOptions.Normalize(settings.OverlayDesign);
         _resetOnNameRow = settings.ResetTimeOnNameRow;
+        ConfirmHideBadge = ShowHideBadgeDialogAsync;
         _headerBadge = HeaderBadgeOptions.Normalize(settings.HeaderBadge);
+        _confirmHideBadge = settings.ConfirmHideBadge;
+        _badgeAverage = BadgeAverageOptions.Normalize(settings.BadgeAverage);
         _customPosition = GetCustomPosition(settings);
         _customPositionSaveTimer.Tick += (_, _) => FlushCustomPosition();
         _manualDragResetTimer.Tick += (_, _) =>
@@ -124,7 +131,12 @@ public sealed class UsageOverlayWindow : Window
             _manualDragResetTimer.Stop();
             _manualDragOrigin = null;
         };
-        _paceMarkerTimer.Tick += (_, _) => UpdatePaceMarkers();
+        _paceMarkerTimer.Tick += (_, _) =>
+        {
+            UpdatePaceMarkers();
+            // Time-aware averages drift with the clock too.
+            UpdateBadge();
+        };
         _paceMarkerTimer.Start();
         _margin = settings.Margin;
         _trayEnabled = settings.EnableSystemTray;
@@ -183,7 +195,9 @@ public sealed class UsageOverlayWindow : Window
             CreateClaudeIcon());
         _latestCodex = new LatestProviderCard("Codex", Color.Parse(CodexBrandColor),
             CreateCodexIcon(CodexBrandColor));
-        ApplyLatestText();
+        _ringsClaude = new RingsProviderCard("Claude", Color.Parse(ClaudeBrandColor), CreateClaudeIcon());
+        _ringsCodex = new RingsProviderCard("Codex", Color.Parse(CodexBrandColor), CreateCodexIcon(CodexBrandColor));
+        ApplyProviderText();
         ApplyCardVisibility();
         _status = new TextBlock
         {
@@ -197,6 +211,8 @@ public sealed class UsageOverlayWindow : Window
         stack.Children.Add(_codexGroup);
         stack.Children.Add(_latestClaude.Root);
         stack.Children.Add(_latestCodex.Root);
+        stack.Children.Add(_ringsClaude.Root);
+        stack.Children.Add(_ringsCodex.Root);
         stack.Children.Add(_status);
         var layout = new Grid { RowDefinitions = new RowDefinitions("Auto,*") };
         var scroll = new ScrollViewer
@@ -265,7 +281,7 @@ public sealed class UsageOverlayWindow : Window
             if (GetTrayRestorePosition() is { } savedPosition) Position = savedPosition;
             else PositionOnPrimaryScreen();
             // Usage that arrived before the first show could not be measured then.
-            Dispatcher.UIThread.Post(RefitLatestHeight, DispatcherPriority.Loaded);
+            Dispatcher.UIThread.Post(RefitContentHeight, DispatcherPriority.Loaded);
         };
         AddHandler(KeyDownEvent, HandleKeyDown, RoutingStrategies.Tunnel);
         PrepareForFirstShow();
@@ -302,6 +318,13 @@ public sealed class UsageOverlayWindow : Window
     public event Action<UsageCardKind, double>? CardHeightChanged;
     public event Action<PixelPoint>? CustomPositionChanged;
     public event Action<bool>? AlwaysOnTopRequested;
+    /// <summary>
+    /// Raised when a header badge mode is picked from the badge's menu, with whether
+    /// hiding the badge should still ask first.
+    /// </summary>
+    public event Action<string, bool>? HeaderBadgeRequested;
+    /// <summary>Raised when a badge average method is picked from the badge's menu.</summary>
+    public event Action<string>? BadgeAverageRequested;
 
     private void HandleKeyDown(object? sender, KeyEventArgs eventArgs)
     {
@@ -347,9 +370,9 @@ public sealed class UsageOverlayWindow : Window
                 state?.CreditBalance,
                 state?.AutomaticReloadEnabled == true);
             ToolTip.SetTip(_codexWeeklyCard.Container, _codexWeeklyCard.Details.Text);
-            UpdateLatestCard(UsageProvider.Codex);
+            UpdateProviderCards(UsageProvider.Codex);
             FitResetColumns();
-            RefitLatestHeight();
+            RefitContentHeight();
             return;
         }
 
@@ -358,18 +381,18 @@ public sealed class UsageOverlayWindow : Window
         UpdateCard(_claudeWeeklyCard, state?.Weekly, weekly: true, dataAvailable: state is not null);
         _claudeWeeklyCard.Details.Text = _text.FormatClaudeCreditsDetails(state?.ExtraUsage);
         ToolTip.SetTip(_claudeWeeklyCard.Container, _claudeWeeklyCard.Details.Text);
-        UpdateLatestCard(UsageProvider.Claude);
+        UpdateProviderCards(UsageProvider.Claude);
         FitResetColumns();
-        RefitLatestHeight();
+        RefitContentHeight();
     }
 
     /// <summary>
-    /// Latest cards grow when data arrives (two-line rows, credits), so an
+    /// Provider cards grow when data arrives (two-line rows, credits), so an
     /// auto-fitted window follows them; a window the user resized keeps its size.
     /// </summary>
-    private void RefitLatestHeight()
+    private void RefitContentHeight()
     {
-        if (!IsVisible || _design != OverlayDesignOptions.Latest ||
+        if (!IsVisible || _design == OverlayDesignOptions.Previous ||
             _lastFittedHeight is not { } fitted || Math.Abs(Height - fitted) >= 0.5)
             return;
         // Text and visibility changes reach the content stack's cached size
@@ -378,22 +401,27 @@ public sealed class UsageOverlayWindow : Window
         ApplyComputedHeight();
     }
 
-    private void UpdateLatestCard(UsageProvider provider)
+    private void UpdateProviderCards(UsageProvider provider)
     {
         var claude = provider == UsageProvider.Claude;
         var card = claude ? _latestClaude : _latestCodex;
         var state = claude ? _lastClaudeState : _lastCodexState;
-        UpdateLatestRow(card.FiveHour, state?.FiveHour, state is not null);
-        UpdateLatestRow(card.Weekly, state?.Weekly, state is not null);
-        if (claude)
-            card.SetCredits(state?.ExtraUsage is null ? null : _text.FormatClaudeCreditsDetails(state.ExtraUsage));
-        else
-            card.SetCredits(state?.CreditBalance is null ? null
-                : _text.FormatCreditDetails(state.CreditBalance, state.AutomaticReloadEnabled == true));
+        var rings = claude ? _ringsClaude : _ringsCodex;
+        UpdateProviderLimit(card.FiveHour, state?.FiveHour, state is not null, rings, weekly: false);
+        UpdateProviderLimit(card.Weekly, state?.Weekly, state is not null, rings, weekly: true);
+        var credits = claude
+            ? state?.ExtraUsage is null ? null : _text.FormatClaudeCreditsDetails(state.ExtraUsage)
+            : state?.CreditBalance is null ? null
+                : _text.FormatCreditDetails(state.CreditBalance, state.AutomaticReloadEnabled == true);
+        card.SetCredits(credits);
+        // Rings always shows Claude's credit status, with placeholders until the
+        // usage response reports extra usage, as the Previous design does.
+        rings.SetCredits(claude ? _text.FormatClaudeCreditsDetails(state?.ExtraUsage) : credits);
         UpdateBadge();
     }
 
-    private void UpdateLatestRow(LatestProviderCard.LatestLimitRow row, RateLimitWindowState? state, bool dataAvailable)
+    private void UpdateProviderLimit(LatestProviderCard.LatestLimitRow row, RateLimitWindowState? state, bool dataAvailable,
+        RingsProviderCard rings, bool weekly)
     {
         var now = DateTimeOffset.Now;
         if (state is null)
@@ -401,6 +429,7 @@ public sealed class UsageOverlayWindow : Window
             row.Reset.Text = dataAvailable ? _text.LimitUnavailable : _text.WaitingForData;
             row.SetValue(null, SignalBrush(UsageSignal.Gray), Brush(_palette.StatusText));
             row.SetPaceMarker(null, null);
+            rings.SetLimit(weekly, null, row.Reset.Text!, Brush(_palette.StatusText), null, null);
             return;
         }
 
@@ -410,38 +439,55 @@ public sealed class UsageOverlayWindow : Window
             : _text.ResetUnavailable;
         row.SetValue(remaining, SignalBrush(UsagePresentation.GetSignal(remaining)), Brush(_palette.StatusText));
         var ratio = _showPacePointer ? UsagePresentation.GetPaceMarkerRatio(state, now) : null;
-        row.SetPaceMarker(ratio, ratio is { } expected
+        var tooltip = ratio is { } expected
             ? _text.FormatPaceTooltip((int)Math.Round(expected * 100, MidpointRounding.AwayFromZero), remaining)
-            : null);
+            : null;
+        row.SetPaceMarker(ratio, tooltip);
+        rings.SetLimit(weekly, remaining, row.Reset.Text!, SignalBrush(UsagePresentation.GetSignal(remaining)), ratio, tooltip);
     }
 
-    /// <summary>The header badge shows the lowest remaining limit among the shown ones.</summary>
+    /// <summary>The header badge summarizes the limits the chosen mode covers.</summary>
     private void UpdateBadge()
     {
         var entries = new List<BadgeEntry>();
-        void Consider(bool shown, string provider, string limit, RateLimitWindowState? state)
+        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        void Consider(bool enabled, bool shown, string provider, UsageCardKind kind, string limit, RateLimitWindowState? state)
         {
-            if (shown && state is not null)
-                entries.Add(new BadgeEntry(provider, limit, state.RemainingPercent));
+            if (enabled && state is not null)
+                entries.Add(new BadgeEntry(provider, kind, limit, state.RemainingPercent, shown,
+                    state.WindowDurationMins is > 0 ? state.WindowDurationMins.Value : null,
+                    state.ResetsAt is long resetsAt ? Math.Max(0, resetsAt - now) / 60d : null));
         }
 
-        Consider(_claudeEnabled && _showClaudeSession, "Claude", _text.ClaudeFiveHourTitle, _lastClaudeState?.FiveHour);
-        Consider(_claudeEnabled && _showClaudeWeekly, "Claude", _text.ClaudeWeeklyTitle, _lastClaudeState?.Weekly);
-        Consider(_codexEnabled && _showCodexFiveHour, "Codex", _text.CodexFiveHourShortTitle, _lastCodexState?.FiveHour);
-        Consider(_codexEnabled && _showCodexWeekly, "Codex", _text.CodexWeeklyShortTitle, _lastCodexState?.Weekly);
-        var badge = UsagePresentation.SelectBadge(_headerBadge, entries);
+        Consider(_claudeEnabled, _showClaudeSession, "Claude", UsageCardKind.ClaudeSession, _text.ClaudeFiveHourTitle, _lastClaudeState?.FiveHour);
+        Consider(_claudeEnabled, _showClaudeWeekly, "Claude", UsageCardKind.ClaudeWeekly, _text.ClaudeWeeklyTitle, _lastClaudeState?.Weekly);
+        Consider(_codexEnabled, _showCodexFiveHour, "Codex", UsageCardKind.CodexFiveHour, _text.CodexFiveHourShortTitle, _lastCodexState?.FiveHour);
+        Consider(_codexEnabled, _showCodexWeekly, "Codex", UsageCardKind.CodexWeekly, _text.CodexWeeklyShortTitle, _lastCodexState?.Weekly);
+        var badge = UsagePresentation.SelectBadge(_headerBadge, entries, _badgeAverage);
+        // Rings already show every percentage large, and its narrower header
+        // needs the badge's room for the title.
         _badge.IsVisible = _design == OverlayDesignOptions.Latest && badge is not null;
         if (badge is null)
             return;
 
-        var signal = SignalBrush(UsagePresentation.GetSignal(badge.RemainingPercent));
-        _badgeValue.Text = badge.RemainingPercent.ToString();
+        var signal = SignalBrush(badge.IsPaceGap
+            ? UsagePresentation.GetPaceSignal(badge.RemainingPercent)
+            : UsagePresentation.GetSignal(badge.RemainingPercent));
+        // A pace gap is signed percentage points, not a percentage left.
+        _badgeValue.Text = badge.IsPaceGap
+            ? (badge.RemainingPercent > 0 ? "+" : badge.RemainingPercent < 0 ? "−" : "±") + Math.Abs(badge.RemainingPercent)
+            : badge.RemainingPercent.ToString();
+        _badgeSign.IsVisible = !badge.IsPaceGap;
         _badgeValue.Foreground = signal;
         _badgeSign.Foreground = signal;
         _badge.Background = new SolidColorBrush(signal.Color, 0.14);
-        ToolTip.SetTip(_badge, badge.Source is { } source
-            ? _text.FormatLowestRemaining(source.Provider, source.Limit, badge.RemainingPercent)
-            : _text.FormatAverageRemaining(badge.Count, badge.RemainingPercent));
+        ToolTip.SetTip(_badge, (badge switch
+        {
+            { Source: { } source, Basis: BadgeBasis.Lowest } =>
+                _text.FormatLowestRemaining(source.Provider, source.Limit, badge.RemainingPercent),
+            { Source: { } source } => _text.FormatLimitRemaining(source.Provider, source.Limit, badge.RemainingPercent),
+            _ => _text.FormatAverageBadge(badge.Provider, badge.Count, badge.RemainingPercent, badge.Method)
+        }) + Environment.NewLine + _text.BadgeQuickChangeHint);
     }
 
     public void SetLoading(bool loading)
@@ -461,11 +507,11 @@ public sealed class UsageOverlayWindow : Window
         var updated = _usageStatus.UpdatedAt is { } updatedAt
             ? _text.FormatUpdatedTime(updatedAt)
             : _text.WaitingForData;
-        var latest = _design == OverlayDesignOptions.Latest;
-        // The Latest design shows the update time under the heading, and the
+        var modernHeader = _design != OverlayDesignOptions.Previous;
+        // Latest and Rings show the update time under the heading, and the
         // bottom line only for errors.
         _headerSubtitle.Text = updated;
-        _headerSubtitle.IsVisible = latest;
+        _headerSubtitle.IsVisible = modernHeader;
         if (!string.IsNullOrWhiteSpace(_usageStatus.Error))
         {
             _status.Text = _usageStatus.Error;
@@ -476,7 +522,7 @@ public sealed class UsageOverlayWindow : Window
 
         _status.Text = updated;
         _status.Foreground = Brush(_palette.StatusText);
-        _status.IsVisible = !latest;
+        _status.IsVisible = !modernHeader;
     }
 
     public void ApplySettings(CompanionSettings settings, UiText text)
@@ -509,7 +555,9 @@ public sealed class UsageOverlayWindow : Window
         _design = design;
         _resetOnNameRow = settings.ResetTimeOnNameRow;
         _headerBadge = HeaderBadgeOptions.Normalize(settings.HeaderBadge);
-        ApplyLatestText();
+        _confirmHideBadge = settings.ConfirmHideBadge;
+        _badgeAverage = BadgeAverageOptions.Normalize(settings.BadgeAverage);
+        ApplyProviderText();
         ApplyDesign();
         ApplyFontScale();
         ApplyCardHeights();
@@ -582,7 +630,7 @@ public sealed class UsageOverlayWindow : Window
 
         WindowState = WindowState.Normal;
         if (wasHidden)
-            Dispatcher.UIThread.Post(RefitLatestHeight, DispatcherPriority.Loaded);
+            Dispatcher.UIThread.Post(RefitContentHeight, DispatcherPriority.Loaded);
         if (restorePosition is { } savedPosition)
         {
             Position = savedPosition;
@@ -730,13 +778,15 @@ public sealed class UsageOverlayWindow : Window
     private void ApplyFontScale()
     {
         foreach (var title in _providerTitles) title.FontSize = 21 * _fontScale;
-        var latest = _design == OverlayDesignOptions.Latest;
-        _headerTitle.FontSize = (latest ? 16 : 11) * _fontScale;
+        var modernHeader = _design != OverlayDesignOptions.Previous;
+        _headerTitle.FontSize = (modernHeader ? 16 : 11) * _fontScale;
         _headerSubtitle.FontSize = 11.5 * _fontScale;
         _badgeValue.FontSize = 13 * _fontScale;
         _badgeSign.FontSize = 9.5 * _fontScale;
         _latestClaude.ApplyFontScale(_fontScale);
         _latestCodex.ApplyFontScale(_fontScale);
+        _ringsClaude.ApplyFontScale(_fontScale);
+        _ringsCodex.ApplyFontScale(_fontScale);
         _status.FontSize = 11 * _fontScale;
         foreach (var card in new[]
                  { _claudeFiveHourCard, _claudeWeeklyCard, _codexFiveHourCard, _codexWeeklyCard })
@@ -766,36 +816,44 @@ public sealed class UsageOverlayWindow : Window
     private void ApplyCardVisibility()
     {
         var latest = _design == OverlayDesignOptions.Latest;
+        var rings = _design == OverlayDesignOptions.Rings;
+        var previous = _design == OverlayDesignOptions.Previous;
         _codexFiveHourCard.Container.IsVisible = _showCodexFiveHour && _codexEnabled;
         _codexWeeklyCard.Container.IsVisible = _showCodexWeekly && _codexEnabled;
         _claudeFiveHourCard.Container.IsVisible = _showClaudeSession && _claudeEnabled;
         _claudeWeeklyCard.Container.IsVisible = _showClaudeWeekly && _claudeEnabled;
         var showClaude = _claudeEnabled && (_showClaudeSession || _showClaudeWeekly);
         var showCodex = _codexEnabled && (_showCodexFiveHour || _showCodexWeekly);
-        _claudeGroup.IsVisible = !latest && showClaude;
-        _codexGroup.IsVisible = !latest && showCodex;
+        _claudeGroup.IsVisible = previous && showClaude;
+        _codexGroup.IsVisible = previous && showCodex;
         _latestClaude.Root.IsVisible = latest && showClaude;
         _latestCodex.Root.IsVisible = latest && showCodex;
+        _ringsClaude.Root.IsVisible = rings && showClaude;
+        _ringsCodex.Root.IsVisible = rings && showCodex;
+        _ringsClaude.ApplyVisibility(_showClaudeSession, _showClaudeWeekly);
+        _ringsCodex.ApplyVisibility(_showCodexFiveHour, _showCodexWeekly);
         _latestClaude.ApplyVisibility(_showClaudeSession, _showClaudeWeekly);
         _latestCodex.ApplyVisibility(_showCodexFiveHour, _showCodexWeekly);
     }
 
-    private void ApplyLatestText()
+    private void ApplyProviderText()
     {
         _latestClaude.SetResetOnNameRow(_resetOnNameRow);
         _latestCodex.SetResetOnNameRow(_resetOnNameRow);
         _latestClaude.ApplyText(_text, _text.ClaudeFiveHourTitle, _text.ClaudeWeeklyTitle);
         _latestCodex.ApplyText(_text, _text.CodexFiveHourShortTitle, _text.CodexWeeklyShortTitle);
+        _ringsClaude.ApplyText(_text, _text.ClaudeFiveHourTitle, _text.ClaudeWeeklyTitle);
+        _ringsCodex.ApplyText(_text, _text.CodexFiveHourShortTitle, _text.CodexWeeklyShortTitle);
     }
 
-    /// <summary>Switches the header between the Latest heading and the Previous caption.</summary>
+    /// <summary>Latest and Rings share the overview heading; Previous uses a compact caption.</summary>
     private void ApplyDesign()
     {
-        var latest = _design == OverlayDesignOptions.Latest;
-        _headerTitle.Text = latest ? _text.UsageOverviewTitle : _text.CombinedUsageHeaderTitle;
-        _headerTitle.LetterSpacing = latest ? 0 : 1.3;
-        _headerGrid.Height = latest ? double.NaN : 26;
-        _headerGrid.Margin = latest ? new Thickness(2, 0, 0, 4) : default;
+        var modernHeader = _design != OverlayDesignOptions.Previous;
+        _headerTitle.Text = modernHeader ? _text.UsageOverviewTitle : _text.CombinedUsageHeaderTitle;
+        _headerTitle.LetterSpacing = modernHeader ? 0 : 1.3;
+        _headerGrid.Height = modernHeader ? double.NaN : 26;
+        _headerGrid.Margin = modernHeader ? new Thickness(2, 0, 0, 4) : default;
         RenderStatus();
         UpdateBadge();
     }
@@ -910,6 +968,8 @@ public sealed class UsageOverlayWindow : Window
                 Children = { _badgeValue, _badgeSign }
             }
         };
+        _badge.Cursor = new Cursor(StandardCursorType.Hand);
+        _badge.PointerPressed += HandleBadgePointerPressed;
         Grid.SetColumn(_badge, 1);
 
         _shortcutsButton = HeaderButton("?", _text.ShortcutsAction);
@@ -960,11 +1020,157 @@ public sealed class UsageOverlayWindow : Window
         grid.Children.Add(_minimizeButton);
         grid.Children.Add(_closeButton);
         foreach (var button in new Control[]
-                 { _shortcutsButton, _pinButton, _settingsButton, _refreshButton, _minimizeButton, _closeButton })
+                 { _badge, _shortcutsButton, _pinButton, _settingsButton, _refreshButton, _minimizeButton, _closeButton })
         {
             WindowDecorationProperties.SetElementRole(button, WindowDecorationsElementRole.User);
         }
         return grid;
+    }
+
+    /// <summary>Clicking the badge opens a menu to switch what it shows.</summary>
+    private void HandleBadgePointerPressed(object? sender, PointerPressedEventArgs eventArgs)
+    {
+        if (!eventArgs.GetCurrentPoint(_badge).Properties.IsLeftButtonPressed)
+            return;
+
+        eventArgs.Handled = true;
+        CreateBadgeMenu().ShowAt(_badge);
+    }
+
+    internal MenuFlyout CreateBadgeMenu()
+    {
+        var menu = new MenuFlyout { Placement = PlacementMode.BottomEdgeAlignedRight };
+        foreach (var (value, label) in _text.HeaderBadgeChoices)
+        {
+            if (value is HeaderBadgeOptions.Claude or HeaderBadgeOptions.Codex or HeaderBadgeOptions.Hidden)
+                menu.Items.Add(new Separator());
+            var item = new MenuItem
+            {
+                Header = label,
+                ToggleType = MenuItemToggleType.Radio,
+                IsChecked = value == _headerBadge
+            };
+            item.Click += async (_, _) =>
+            {
+                // Once hidden, the badge can't be clicked, so say where to turn it back on.
+                if (value == HeaderBadgeOptions.Hidden && _confirmHideBadge)
+                {
+                    var answer = await ConfirmHideBadge();
+                    if (!answer.Hide)
+                        return;
+                    _confirmHideBadge = !answer.DoNotShowAgain;
+                }
+                SelectHeaderBadge(value);
+            };
+            menu.Items.Add(item);
+        }
+
+        var averages = new MenuItem { Header = _text.BadgeAverageOption };
+        foreach (var (value, label, description) in _text.BadgeAverageChoices)
+        {
+            var item = new MenuItem
+            {
+                Header = label,
+                ToggleType = MenuItemToggleType.Radio,
+                IsChecked = value == _badgeAverage
+            };
+            ToolTip.SetTip(item, description);
+            item.Click += (_, _) => SelectBadgeAverage(value);
+            averages.Items.Add(item);
+        }
+        menu.Items.Add(new Separator());
+        menu.Items.Add(averages);
+        return menu;
+    }
+
+    internal void SelectBadgeAverage(string value)
+    {
+        var normalized = BadgeAverageOptions.Normalize(value);
+        if (normalized == _badgeAverage)
+            return;
+
+        _badgeAverage = normalized;
+        UpdateBadge();
+        BadgeAverageRequested?.Invoke(normalized);
+    }
+
+    /// <summary>Asks before hiding the badge; tests replace it to skip the dialog.</summary>
+    internal Func<Task<HideBadgeAnswer>> ConfirmHideBadge { get; set; }
+
+    internal readonly record struct HideBadgeAnswer(bool Hide, bool DoNotShowAgain);
+
+    private async Task<HideBadgeAnswer> ShowHideBadgeDialogAsync()
+    {
+        var dialog = new Window
+        {
+            Title = _text.HideBadgeTitle,
+            Width = 420,
+            Height = 210,
+            CanResize = false,
+            ShowInTaskbar = false,
+            Topmost = Topmost,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner
+        };
+        Button Action(string content, bool result, bool isDefault)
+        {
+            var button = new Button
+            {
+                Content = content,
+                MinWidth = 88,
+                IsDefault = isDefault,
+                HorizontalContentAlignment = HorizontalAlignment.Center,
+                VerticalContentAlignment = VerticalAlignment.Center
+            };
+            button.Click += (_, _) => dialog.Close(result);
+            return button;
+        }
+
+        var hide = Action(_text.HideBadgeAction, true, false);
+        var cancel = Action(_text.CancelAction, false, true);
+        var actions = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Spacing = 8,
+            Children = { hide, cancel }
+        };
+        var doNotShowAgain = new CheckBox
+        {
+            Content = _text.DoNotShowAgainOption,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        var footer = new DockPanel { LastChildFill = false };
+        DockPanel.SetDock(actions, Dock.Right);
+        footer.Children.Add(actions);
+        footer.Children.Add(doNotShowAgain);
+        var layout = new Grid { RowDefinitions = new RowDefinitions("*,Auto"), Margin = new Thickness(24) };
+        Grid.SetRow(footer, 1);
+        layout.Children.Add(new TextBlock { Text = _text.HideBadgeMessage, TextWrapping = TextWrapping.Wrap });
+        layout.Children.Add(footer);
+        dialog.Content = layout;
+        dialog.Opened += (_, _) => cancel.Focus();
+        dialog.KeyDown += (_, args) =>
+        {
+            if (args.Key == Key.Escape)
+            {
+                args.Handled = true;
+                dialog.Close(false);
+            }
+        };
+        var hidden = await dialog.ShowDialog<bool>(this);
+        // "Do not show again" only counts when the badge is actually hidden.
+        return new HideBadgeAnswer(hidden, hidden && doNotShowAgain.IsChecked == true);
+    }
+
+    internal void SelectHeaderBadge(string value)
+    {
+        var normalized = HeaderBadgeOptions.Normalize(value);
+        if (normalized == _headerBadge)
+            return;
+
+        _headerBadge = normalized;
+        UpdateBadge();
+        HeaderBadgeRequested?.Invoke(normalized, _confirmHideBadge);
     }
 
     private string CloseTooltip() =>
@@ -1312,10 +1518,13 @@ public sealed class UsageOverlayWindow : Window
         var labelColumnWidth = Math.Ceiling(labelWidth);
         var percentageColumnWidth = Math.Ceiling(percentageWidth);
         var resetColumnWidth = Math.Min(Math.Ceiling(resetWidth), 228);
-        // The Latest design stacks each limit's text, so its width follows the font size only.
-        var targetWidth = _design == OverlayDesignOptions.Latest
-            ? Math.Ceiling(LatestDesignWidth * _fontScale)
-            : Math.Max(280, 26 + labelColumnWidth + percentageColumnWidth + 16 + resetColumnWidth);
+        // Latest and Rings stack their labels, so their width follows the font size.
+        var targetWidth = _design switch
+        {
+            OverlayDesignOptions.Latest => Math.Ceiling(LatestDesignWidth * _fontScale),
+            OverlayDesignOptions.Rings => Math.Ceiling(RingsDesignWidth * _fontScale),
+            _ => Math.Max(280, 26 + labelColumnWidth + percentageColumnWidth + 16 + resetColumnWidth)
+        };
         var stillAutoFitted = _lastFittedWidth is { } previousWidth && Math.Abs(Width - previousWidth) < 0.5;
         if (_fitWidthRequested || stillAutoFitted || Width < targetWidth)
         {
@@ -1379,9 +1588,9 @@ public sealed class UsageOverlayWindow : Window
 
     private void UpdatePaceMarkers()
     {
-        // Countdowns in the Latest design move with the clock as well.
-        UpdateLatestCard(UsageProvider.Claude);
-        UpdateLatestCard(UsageProvider.Codex);
+        // Card countdowns move with the clock as well.
+        UpdateProviderCards(UsageProvider.Claude);
+        UpdateProviderCards(UsageProvider.Codex);
         foreach (var card in new[]
                  { _claudeFiveHourCard, _claudeWeeklyCard, _codexFiveHourCard, _codexWeeklyCard })
         {
@@ -1474,6 +1683,8 @@ public sealed class UsageOverlayWindow : Window
         _headerSubtitle.Foreground = Brush(_palette.StatusText);
         _latestClaude.ApplyTheme(_palette);
         _latestCodex.ApplyTheme(_palette);
+        _ringsClaude.ApplyTheme(_palette);
+        _ringsCodex.ApplyTheme(_palette);
         foreach (var group in new[] { _claudeGroup, _codexGroup })
         {
             group.Background = Brushes.Transparent;
@@ -1535,6 +1746,7 @@ public sealed class UsageOverlayWindow : Window
     private const double PaceMarkerWidth = 10;
     // Wide enough for the heading, the badge, and the six header buttons.
     private const double LatestDesignWidth = 420;
+    private const double RingsDesignWidth = 360;
 
     private static SolidColorBrush Brush(string color) => new(Color.Parse(color));
 

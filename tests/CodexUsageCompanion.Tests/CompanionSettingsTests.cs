@@ -6,6 +6,23 @@ namespace CodexUsageCompanion.Tests;
 public sealed class CompanionSettingsTests
 {
     [Fact]
+    public void HideBadgePromptDefaultsOnAndPersistsDisabled()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"CodexUsageCompanion.Tests.{Guid.NewGuid():N}");
+        var path = Path.Combine(directory, "settings.json");
+        try
+        {
+            Assert.True(CompanionSettingsStore.Load(path).ConfirmHideBadge);
+            CompanionSettingsStore.Save(new CompanionSettings { ConfirmHideBadge = false }, path);
+            Assert.False(CompanionSettingsStore.Load(path).ConfirmHideBadge);
+        }
+        finally
+        {
+            if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
     public void AutoUpdateCheckDefaultsOnAndPersistsDisabled()
     {
         var directory = Path.Combine(Path.GetTempPath(), $"CodexUsageCompanion.Tests.{Guid.NewGuid():N}");
@@ -440,11 +457,36 @@ public sealed class CompanionSettingsTests
     [InlineData(null, OverlayDesignOptions.Latest)]
     [InlineData("latest", OverlayDesignOptions.Latest)]
     [InlineData("Previous", OverlayDesignOptions.Previous)]
+    [InlineData("rings", OverlayDesignOptions.Rings)]
+    [InlineData("RINGS", OverlayDesignOptions.Rings)]
     [InlineData("unknown", OverlayDesignOptions.Latest)]
     public void OverlayDesignDefaultsToLatest(string? value, string expected)
     {
         Assert.Equal(expected, OverlayDesignOptions.Normalize(value));
         Assert.Equal(expected, CompanionSettingsStore.Normalize(new CompanionSettings { OverlayDesign = value! }).OverlayDesign);
+    }
+
+    [Fact]
+    public void RingsDesignAndLimitVisibilityRoundTrip()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"CodexUsageCompanion.Tests.{Guid.NewGuid():N}");
+        var path = Path.Combine(directory, "settings.json");
+        try
+        {
+            var saved = CompanionSettingsStore.Save(new CompanionSettings
+            {
+                OverlayDesign = "RINGS", ShowClaudeSession = false, ShowClaudeWeekly = true,
+                ShowCodexFiveHour = true, ShowCodexWeekly = false, FontScale = 1.5
+            }, path);
+            Assert.Equal(OverlayDesignOptions.Rings, saved.OverlayDesign);
+            Assert.Equal(saved, CompanionSettingsStore.Load(path));
+            Assert.Equal(new[] { "latest", "previous", "rings" }, OverlayDesignOptions.Values);
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+                Directory.Delete(directory, recursive: true);
+        }
     }
 
     [Fact]

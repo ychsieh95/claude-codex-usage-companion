@@ -28,6 +28,9 @@ public sealed record CompanionSettings
     public string OverlayDesign { get; init; } = OverlayDesignOptions.Latest;
     public bool ResetTimeOnNameRow { get; init; }
     public string HeaderBadge { get; init; } = HeaderBadgeOptions.Lowest;
+    /// <summary>Whether hiding the badge from its click menu asks first.</summary>
+    public bool ConfirmHideBadge { get; init; } = true;
+    public string BadgeAverage { get; init; } = BadgeAverageOptions.Plain;
     public string SettingsPage { get; init; } = SettingsPageOptions.Usage;
     public double FontScale { get; init; } = OverlayLayoutOptions.DefaultFontScale;
     public double ClaudeSessionCardHeight { get; init; } = OverlayLayoutOptions.FiveHourCardHeight;
