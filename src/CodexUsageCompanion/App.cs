@@ -267,6 +267,35 @@ public sealed class App : Application
             }
         };
 
+        var autoUpdateCheck = new NativeMenuItem(_text.TrayAutoUpdateCheckOption)
+        {
+            ToggleType = MenuItemToggleType.CheckBox,
+            IsChecked = _settings.EnableAutoUpdateCheck
+        };
+        autoUpdateCheck.Click += (_, _) =>
+        {
+            var enabled = !_settings.EnableAutoUpdateCheck;
+            try
+            {
+                _settings = CompanionSettingsStore.Save(
+                    _settings with { EnableAutoUpdateCheck = enabled });
+                autoUpdateCheck.IsChecked = _settings.EnableAutoUpdateCheck;
+                ConfigureUpdateChecks();
+            }
+            catch (Exception exception) when (
+                exception is IOException or
+                UnauthorizedAccessException or
+                ArgumentException or
+                InvalidOperationException)
+            {
+                autoUpdateCheck.IsChecked = _settings.EnableAutoUpdateCheck;
+                CompanionLog.Shared.Write("tray-auto-update-check", exception);
+            }
+        };
+
+        var checkUpdates = new NativeMenuItem(_text.CheckForUpdatesAction);
+        checkUpdates.Click += async (_, _) => await CheckForAppUpdatesManuallyAsync();
+
         var shortcuts = new NativeMenuItem(_text.ShortcutsAction);
         shortcuts.Click += (_, _) =>
         {
@@ -283,6 +312,9 @@ public sealed class App : Application
         menu.Items.Add(new NativeMenuItemSeparator());
         menu.Items.Add(alwaysOnTop);
         menu.Items.Add(startOnBoot);
+        menu.Items.Add(new NativeMenuItemSeparator());
+        menu.Items.Add(checkUpdates);
+        menu.Items.Add(autoUpdateCheck);
         menu.Items.Add(new NativeMenuItemSeparator());
         menu.Items.Add(settings);
         menu.Items.Add(shortcuts);
@@ -876,6 +908,51 @@ public sealed class App : Application
         catch (OperationCanceledException) when (_updateCancellation.IsCancellationRequested) { }
         catch (Exception exception) { CompanionLog.Shared.Write("update-check", exception); }
         finally { _checkingUpdate = false; }
+    }
+
+    // Called from the tray menu. Runs even when automatic checks are off, and always reports the result.
+    private async Task CheckForAppUpdatesManuallyAsync()
+    {
+        if (_checkingUpdate || _installingUpdate || _shutdownRequested) return;
+        const string title = "Claude Codex Usage Companion";
+        AppUpdateResult result;
+        _checkingUpdate = true;
+        try
+        {
+            result = await _updateChecker.CheckAsync(_updateCancellation.Token);
+        }
+        catch (OperationCanceledException) when (_updateCancellation.IsCancellationRequested) { return; }
+        catch (Exception exception)
+        {
+            CompanionLog.Shared.Write("update-check", exception);
+            _notificationService.Show(title, _text.UpdateCheckFailed, critical: false);
+            return;
+        }
+        finally { _checkingUpdate = false; }
+
+        if (_shutdownRequested) return;
+        if (!result.UpdateAvailable)
+        {
+            _notificationService.Show(title, _text.AppUpToDate, critical: false);
+            return;
+        }
+
+        _notifiedUpdateVersion = result.Version;
+        if (_updateInstaller.CanInstall(result))
+        {
+            var accepted = await _notificationService.ShowWithActionAsync(title,
+                _text.FormatAppUpdate(result.Version), _text.InstallNowAction, _updateCancellation.Token);
+            if (accepted == true && !_shutdownRequested)
+            {
+                var error = await InstallUpdateAsync(result, _ => { });
+                if (error is not null)
+                    _notificationService.Show(title, error + "\n" + result.ReleaseUrl, critical: false);
+            }
+            // null means the notification cannot show an action, so fall back to the release link.
+            if (accepted is not null) return;
+        }
+        _notificationService.Show(title,
+            _text.FormatAppUpdate(result.Version) + "\n" + result.ReleaseUrl, critical: false);
     }
 
     // Returns true when the update was handled, so the plain "update available" notification is not needed.
