@@ -57,6 +57,8 @@ Claude Codex Usage Companion 是一套在 Linux 上執行的本機開源 Claude 
 
 **自動檢查更新（啟動時及每天）**預設啟用。程式會在啟動時及執行期間每 24 小時檢查一次。若要停用自動檢查，請取消勾選，再按**確定**或**套用**。仍可手動檢查。
 
+系統匣選單也在獨立的區段中提供這兩項控制。**檢查更新**會立即檢查（即使已停用自動檢查），並以桌面通知顯示結果。如果這個安裝方式可以安裝更新，通知會有**立即安裝**按鈕；按下之前不會下載任何檔案。否則通知會顯示版本頁面的連結。**自動檢查更新**可開啟或關閉自動檢查，與設定中的選項相同。
+
 自動檢查發現新版本時會顯示桌面通知。手動檢查的網路錯誤會顯示在設定中。自動檢查的網路錯誤會寫入記錄。
 
 ### 自動安裝
@@ -230,7 +232,7 @@ sha256sum --check --ignore-missing SHA256SUMS
 使用以下指令安裝套件：
 
 ```bash
-sudo apt install ./claude-codex-usage-companion_0.2.2_amd64.deb
+sudo apt install ./claude-codex-usage-companion_0.2.3_amd64.deb
 ```
 
 套件會安裝下列項目：
@@ -245,7 +247,7 @@ sudo apt install ./claude-codex-usage-companion_0.2.2_amd64.deb
 使用以下指令安裝套件：
 
 ```bash
-sudo snap install --classic --dangerous ./claude-codex-usage-companion_0.2.2_amd64.snap
+sudo snap install --classic --dangerous ./claude-codex-usage-companion_0.2.3_amd64.snap
 ```
 
 由於檔案並非來自 Snap Store，因此需要 `--dangerous` 旗標。
@@ -261,7 +263,7 @@ sudo snap alias claude-codex-usage-companion claude-codex-usage
 此 snap 包含 Plasma 小工具套件，但不會自動安裝。若要安裝小工具，請執行：
 
 ```bash
-kpackagetool6 --type Plasma/Applet --install /snap/claude-codex-usage-companion/current/usr/share/plasma/claude-codex-usage-companion-0.2.2.plasmoid
+kpackagetool6 --type Plasma/Applet --install /snap/claude-codex-usage-companion/current/usr/share/plasma/claude-codex-usage-companion-0.2.3.plasmoid
 ```
 
 若啟用登入時自動啟動，自動啟動項目會使用 `/snap/bin/claude-codex-usage-companion`。此路徑在 snap 更新後保持不變。
@@ -271,8 +273,8 @@ kpackagetool6 --type Plasma/Applet --install /snap/claude-codex-usage-companion/
 解壓縮封存檔，並將程式複製到 `PATH` 中的目錄：
 
 ```bash
-tar -xzf claude-codex-usage-companion-0.2.2-linux-x64.tar.gz
-cd claude-codex-usage-companion-0.2.2-linux-x64
+tar -xzf claude-codex-usage-companion-0.2.3-linux-x64.tar.gz
+cd claude-codex-usage-companion-0.2.3-linux-x64
 install -D -m 755 claude-codex-usage-companion ~/.local/bin/claude-codex-usage-companion
 ```
 
@@ -287,14 +289,14 @@ install -D -m 755 claude-codex-usage-companion ~/.local/bin/claude-codex-usage-c
 此套件適用於 snap 或可攜式封存檔。`.deb` 已包含小工具，請勿與 `.deb` 一併使用。可不使用 root 安裝：
 
 ```bash
-kpackagetool6 --type Plasma/Applet --install ./claude-codex-usage-companion-0.2.2.plasmoid
+kpackagetool6 --type Plasma/Applet --install ./claude-codex-usage-companion-0.2.3.plasmoid
 ```
 
 若要更新已安裝的小工具，請以 `--upgrade` 取代 `--install`。小工具需要可從 `PATH` 執行 `claude-codex-usage-companion` 指令。
 
 ### Codex plugin
 
-Linux release 建置會產生 `CodexUsageCompanionMarketplace-v0.2.2-linux-x64.zip`。請解壓縮此檔案。使用下列命令加入解壓縮的 marketplace：
+Linux release 建置會產生 `CodexUsageCompanionMarketplace-v0.2.3-linux-x64.zip`。請解壓縮此檔案。使用下列命令加入解壓縮的 marketplace：
 
 ```bash
 codex plugin marketplace add /path/to/extracted-marketplace
@@ -615,6 +617,8 @@ Claude 的**目前工作階段**與**本週用量（全部）**卡片會顯示�
 - **重新整理使用量**
 - **視窗永遠置頂**
 - **登入時自動啟動**
+- **檢查更新**
+- **自動檢查更新**
 - **設定**
 - **鍵盤快速鍵**
 - **結束**

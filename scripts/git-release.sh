@@ -5,7 +5,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT/scripts/lib/log-block.sh"
 cd "$ROOT"
 
-VERSION="v0.2.2"
+VERSION="v0.2.3"
 
 info "Preparing Git release $VERSION."
 

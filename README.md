@@ -57,6 +57,8 @@ Under **Settings → Updates**, select **Check for updates** to check for a newe
 
 **Automatically check for updates (startup and daily)** is enabled by default. The app checks at startup and every 24 hours while it runs. To disable automatic checks, clear the checkbox. Then select **OK** or **Apply**. Manual checks remain available.
 
+The tray menu has the same two controls in their own section. **Check for updates** checks immediately, even when automatic checks are off, and shows the result in a desktop notification. If this installation can install the update, the notification has an **Install now** button; nothing is downloaded until you select it. Otherwise the notification shows the release page link. **Check for updates automatically** turns automatic checks on or off, the same as the Settings option.
+
 Automatic checks show a desktop notification when a newer version is available. Settings shows network errors from manual checks. The app writes network errors from automatic checks to its log.
 
 ### Automatic install
@@ -230,7 +232,7 @@ Each downloaded file must show `OK`.
 Install the package with this command:
 
 ```bash
-sudo apt install ./claude-codex-usage-companion_0.2.2_amd64.deb
+sudo apt install ./claude-codex-usage-companion_0.2.3_amd64.deb
 ```
 
 The package installs these items:
@@ -245,7 +247,7 @@ The package installs these items:
 Install the package with this command:
 
 ```bash
-sudo snap install --classic --dangerous ./claude-codex-usage-companion_0.2.2_amd64.snap
+sudo snap install --classic --dangerous ./claude-codex-usage-companion_0.2.3_amd64.snap
 ```
 
 The `--dangerous` flag is necessary because the file does not come from the Snap Store.
@@ -261,7 +263,7 @@ sudo snap alias claude-codex-usage-companion claude-codex-usage
 The snap includes the Plasma widget package, but does not install it. To install the widget, run:
 
 ```bash
-kpackagetool6 --type Plasma/Applet --install /snap/claude-codex-usage-companion/current/usr/share/plasma/claude-codex-usage-companion-0.2.2.plasmoid
+kpackagetool6 --type Plasma/Applet --install /snap/claude-codex-usage-companion/current/usr/share/plasma/claude-codex-usage-companion-0.2.3.plasmoid
 ```
 
 If you enable automatic startup, the autostart entry uses `/snap/bin/claude-codex-usage-companion`. This path stays the same after snap updates.
@@ -271,8 +273,8 @@ If you enable automatic startup, the autostart entry uses `/snap/bin/claude-code
 Extract the archive. Copy the app to a directory on `PATH`:
 
 ```bash
-tar -xzf claude-codex-usage-companion-0.2.2-linux-x64.tar.gz
-cd claude-codex-usage-companion-0.2.2-linux-x64
+tar -xzf claude-codex-usage-companion-0.2.3-linux-x64.tar.gz
+cd claude-codex-usage-companion-0.2.3-linux-x64
 install -D -m 755 claude-codex-usage-companion ~/.local/bin/claude-codex-usage-companion
 ```
 
@@ -287,14 +289,14 @@ The autostart entry uses the path of the app file. If you move the file, disable
 Use this package with the snap or the portable archive. Do not use it with the `.deb`, because the `.deb` already includes the widget. Install the package without root access:
 
 ```bash
-kpackagetool6 --type Plasma/Applet --install ./claude-codex-usage-companion-0.2.2.plasmoid
+kpackagetool6 --type Plasma/Applet --install ./claude-codex-usage-companion-0.2.3.plasmoid
 ```
 
 To update an installed widget, use `--upgrade` instead of `--install`. The widget requires the `claude-codex-usage-companion` command on `PATH`.
 
 ### Codex plugin
 
-The Linux release build creates `CodexUsageCompanionMarketplace-v0.2.2-linux-x64.zip`. Extract this file. Add the extracted marketplace with this command:
+The Linux release build creates `CodexUsageCompanionMarketplace-v0.2.3-linux-x64.zip`. Extract this file. Add the extracted marketplace with this command:
 
 ```bash
 codex plugin marketplace add /path/to/extracted-marketplace
@@ -615,6 +617,8 @@ The tray menu groups these actions with separators:
 - **Refresh usage**
 - **Keep window always on top**
 - **Start automatically when I sign in**
+- **Check for updates**
+- **Check for updates automatically**
 - **Settings**
 - **Keyboard shortcuts**
 - **Quit**

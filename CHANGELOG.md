@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-11-27
+
+### Added
+
+- An update section in the tray menu. **Check for updates** checks immediately, even when automatic checks are off, and shows the result in a desktop notification. When this installation can install the update, the notification has an **Install now** button and nothing is downloaded until you select it; otherwise it shows the release page link. **Check for updates automatically** turns automatic checks on or off, the same as **Settings → Updates**.
+
+### Fixed
+
+- Installing a `.deb` update could fail with "apt-get exited with code 100" even though the package installed, leaving the old version running. This happened when the app had been started from a terminal that was later closed: apt-get inherited the closed terminal and could not write its output. The app now gives the installer its own input and output, so the update completes and the app restarts.
+
 ## [0.2.2] - 2026-11-27
 
 ### Added
