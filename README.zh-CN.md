@@ -75,11 +75,12 @@ Claude Codex Usage Companion 是一款在 Linux 上运行的本地开源 Claude 
 
 ## 屏幕截图
 
-| 英文（`en-US`） | 繁体中文（`zh-tw`） | 简体中文（`zh-cn`） |
-| --- | --- | --- |
-| ![英文用量面板](assets/screenshots/overlay-en.png) | ![繁体中文用量面板](assets/screenshots/overlay-zh-tw.png) | ![简体中文用量面板](assets/screenshots/overlay-zh-cn.png) |
+| 设计 | 英文（`en-US`） | 繁体中文（`zh-tw`） | 简体中文（`zh-cn`） |
+| --- | --- | --- | --- |
+| 最新（默认） | ![英文用量面板（最新设计）](assets/screenshots/overlay-en.png) | ![繁体中文用量面板（最新设计）](assets/screenshots/overlay-zh-tw.png) | ![简体中文用量面板（最新设计）](assets/screenshots/overlay-zh-cn.png) |
+| 旧版（v0.1.5） | ![英文用量面板（旧版设计）](assets/screenshots/overlay-previous-en.png) | ![繁体中文用量面板（旧版设计）](assets/screenshots/overlay-previous-zh-tw.png) | ![简体中文用量面板（旧版设计）](assets/screenshots/overlay-previous-zh-cn.png) |
 
-用量面板图片使用示例数据。设置图片显示先前可展开分组的布局。
+用量面板图片使用示例数据。可在**设置 → 外观 → 设计**切换设计。
 
 ### 设置
 

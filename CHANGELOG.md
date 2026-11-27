@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- Refreshed the desktop panel and Settings screenshots in the English, Traditional Chinese, and Simplified Chinese READMEs. They show the panel in both the **Latest** and **Previous (v0.1.5)** designs, and the Settings window's new sidebar layout. `scripts/capture-screenshots.sh` captures both designs again; the Settings changes in v0.2.0 had broken it.
+
 ## [0.2.0] - 2026-11-27
 
 ### Added

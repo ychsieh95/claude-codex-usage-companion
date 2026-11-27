@@ -75,11 +75,12 @@ Before it opens, the window fits all visible cards and the status line. The bott
 
 ## Screenshots
 
-| English (`en-US`) | Traditional Chinese (`zh-tw`) | Simplified Chinese (`zh-cn`) |
-| --- | --- | --- |
-| ![English usage overlay](assets/screenshots/overlay-en.png) | ![Traditional Chinese usage overlay](assets/screenshots/overlay-zh-tw.png) | ![Simplified Chinese usage overlay](assets/screenshots/overlay-zh-cn.png) |
+| Design | English (`en-US`) | Traditional Chinese (`zh-tw`) | Simplified Chinese (`zh-cn`) |
+| --- | --- | --- | --- |
+| Latest (default) | ![English usage overlay, latest design](assets/screenshots/overlay-en.png) | ![Traditional Chinese usage overlay, latest design](assets/screenshots/overlay-zh-tw.png) | ![Simplified Chinese usage overlay, latest design](assets/screenshots/overlay-zh-cn.png) |
+| Previous (v0.1.5) | ![English usage overlay, previous design](assets/screenshots/overlay-previous-en.png) | ![Traditional Chinese usage overlay, previous design](assets/screenshots/overlay-previous-zh-tw.png) | ![Simplified Chinese usage overlay, previous design](assets/screenshots/overlay-previous-zh-cn.png) |
 
-The panel images use sample usage data. The settings images show the earlier layout with expandable sections.
+The panel images use sample usage data. To switch designs, use **Settings → Appearance → Design**.
 
 ### Settings
 

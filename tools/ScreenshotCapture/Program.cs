@@ -23,22 +23,30 @@ AppBuilder.Configure<Application>()
 Application.Current!.Styles.Add(new FluentTheme());
 Application.Current.RequestedThemeVariant = ThemeVariant.Dark;
 
-// Fixed sample data: no account credentials or live provider requests.
-var updated = new DateTimeOffset(2026, 10, 12, 15, 29, 0, TimeSpan.FromHours(8));
-var claudeSessionReset = new DateTimeOffset(2026, 10, 12, 18, 0, 0, TimeSpan.FromHours(8)).ToUnixTimeSeconds();
-var codexFiveHourReset = new DateTimeOffset(2026, 10, 12, 19, 30, 0, TimeSpan.FromHours(8)).ToUnixTimeSeconds();
-var weeklyReset = new DateTimeOffset(2026, 10, 19, 1, 1, 0, TimeSpan.FromHours(8)).ToUnixTimeSeconds();
+// Sample data relative to the capture time, so the latest design shows live countdowns.
+// No account credentials or live provider requests.
+var now = DateTimeOffset.Now;
+var updated = new DateTimeOffset(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0, now.Offset);
+var claudeSessionReset = updated.AddHours(2).AddMinutes(31).ToUnixTimeSeconds();
+var codexFiveHourReset = updated.AddHours(4).AddMinutes(1).ToUnixTimeSeconds();
+var weeklyReset = updated.AddDays(4).AddHours(9).AddMinutes(32).ToUnixTimeSeconds();
 foreach (var (language, filename) in new[]
 {
     (UiLanguage.English, "overlay-en.png"),
     (UiLanguage.TraditionalChinese, "overlay-zh-tw.png"),
     (UiLanguage.SimplifiedChinese, "overlay-zh-cn.png")
 })
+foreach (var (design, overlayFilename) in new[]
+{
+    (OverlayDesignOptions.Latest, filename),
+    (OverlayDesignOptions.Previous, filename.Replace("overlay-", "overlay-previous-"))
+})
 {
     var window = new UsageOverlayWindow(new CompanionSettings
     {
         Theme = UiThemeOptions.Dark,
-        ShowCodexFiveHour = true
+        ShowCodexFiveHour = true,
+        OverlayDesign = design
     }, UiText.For(language));
     window.Width = 460;
     window.UpdateUsage(UsageProvider.Claude, new RateLimitState(
@@ -52,29 +60,15 @@ foreach (var (language, filename) in new[]
     window.SetStatus(updated, null, UsageProvider.Claude);
     window.SetStatus(updated, null, UsageProvider.Codex);
     window.Show();
-    Dispatcher.UIThread.RunJobs();
-    AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-    using var frame = window.CaptureRenderedFrame()
-        ?? throw new InvalidOperationException("Screenshot rendering failed.");
-    using var output = File.Create(Path.Combine(args[0], filename));
-    frame.Save(output, PngBitmapEncoderOptions.Default);
-    Console.WriteLine($"Captured {filename} ({frame.PixelSize})");
+    Capture(window, overlayFilename);
     window.Close();
+    if (design != OverlayDesignOptions.Latest)
+        continue;
 
     var text = UiText.For(language);
     var settings = new SettingsWindow(new CompanionSettings
     {
-        Theme = UiThemeOptions.Dark,
-        SettingsSections = new SettingsSectionState
-        {
-            Usage = false,
-            Appearance = false,
-            Window = false,
-            Notifications = false,
-            DateTime = false,
-            Logging = false,
-            Updates = false
-        }
+        Theme = UiThemeOptions.Dark
     }, text);
     settings.Show();
     Capture(settings, filename.Replace("overlay-", "settings-"));
