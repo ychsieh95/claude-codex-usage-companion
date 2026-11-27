@@ -250,12 +250,29 @@ public sealed class AppUpdateInstaller
     private static string SafeSegment(string value) =>
         string.Concat(value.Where(c => char.IsAsciiLetterOrDigit(c) || c is '.' or '-' or '_'));
 
-    private static async Task<int> RunProcessAsync(string fileName, IReadOnlyList<string> arguments, CancellationToken cancellationToken)
+    /// <summary>
+    /// Runs a process with its own pipes instead of the app's standard streams. The app may have been
+    /// started from a terminal that is now closed, and apt-get exits with code 100 when it cannot write
+    /// its output, even after the package installed.
+    /// </summary>
+    internal static async Task<int> RunProcessAsync(string fileName, IReadOnlyList<string> arguments, CancellationToken cancellationToken)
     {
-        var startInfo = new ProcessStartInfo { FileName = fileName, UseShellExecute = false, CreateNoWindow = true };
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = fileName,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardInput = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true
+        };
         foreach (var argument in arguments) startInfo.ArgumentList.Add(argument);
         using var process = Process.Start(startInfo) ?? throw new UpdateInstallException($"{fileName} did not start.");
-        await process.WaitForExitAsync(cancellationToken);
+        process.StandardInput.Close();
+        // Read both streams so a full pipe never blocks the process.
+        var output = process.StandardOutput.ReadToEndAsync(cancellationToken);
+        var error = process.StandardError.ReadToEndAsync(cancellationToken);
+        await Task.WhenAll(output, error, process.WaitForExitAsync(cancellationToken));
         return process.ExitCode;
     }
 }

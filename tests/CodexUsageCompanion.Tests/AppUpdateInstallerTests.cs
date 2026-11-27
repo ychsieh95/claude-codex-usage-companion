@@ -169,6 +169,28 @@ public sealed class AppUpdateInstallerTests : IDisposable
     }
 
     [Fact]
+    public async Task ElevatedProcessGetsItsOwnStreams()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        // The child must not inherit the app's streams, which may belong to a closed terminal.
+        // It writes more than a pipe holds to both streams, and stdin must be at end of file.
+        const string script = """
+            [ "$(readlink /proc/$$/fd/0)" != "$(readlink /proc/$PPID/fd/0)" ] || exit 10
+            [ "$(readlink /proc/$$/fd/1)" != "$(readlink /proc/$PPID/fd/1)" ] || exit 11
+            [ "$(readlink /proc/$$/fd/2)" != "$(readlink /proc/$PPID/fd/2)" ] || exit 12
+            if read -r line; then exit 13; fi
+            head -c 200000 /dev/zero
+            head -c 200000 /dev/zero >&2
+            exit 7
+            """;
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+
+        var exitCode = await AppUpdateInstaller.RunProcessAsync("/bin/sh", ["-c", script], timeout.Token);
+
+        Assert.Equal(7, exitCode);
+    }
+
+    [Fact]
     public void RequiresThePackageAndSignedChecksums()
     {
         var installer = Installer(InstallKind.Portable, []);
